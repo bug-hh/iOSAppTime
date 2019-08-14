@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="QWidget" name="verticalLayoutWidget">
+    <property name="geometry">
+     <rect>
+      <x>610</x>
+      <y>10</y>
+      <width>181</width>
+      <height>541</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <widget class="QPushButton" name="start_minicap_button">
+       <property name="text">
+        <string>启动 iOS-minicap</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="start_screenshot_button">
+       <property name="text">
+        <string>开始截图</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="stop_screenshot_button">
+       <property name="text">
+        <string>结束截图</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="cal_button">
+       <property name="text">
+        <string>计算时间</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="training_button">
+       <property name="text">
+        <string>一键训练</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QTextBrowser" name="textBrowser">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>10</y>
+      <width>601</width>
+      <height>471</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QWidget" name="horizontalLayoutWidget">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>479</y>
+      <width>601</width>
+      <height>71</height>
+     </rect>
+    </property>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QLabel" name="platform_label_text">
+       <property name="text">
+        <string>系统版本：</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="platform_label">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="app_name_label_text">
+       <property name="text">
+        <string>被测 APP 版本:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="app_name_label">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>800</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menu">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionSet_ipa_file_path"/>
+    <addaction name="separator"/>
+    <addaction name="actionAdd_model_file"/>
+    <addaction name="separator"/>
+    <addaction name="actionSet_training_pictures"/>
+   </widget>
+   <addaction name="menu"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionSet_ipa_file_path">
+   <property name="text">
+    <string>Set ipa file path</string>
+   </property>
+  </action>
+  <action name="actionAdd_model_file">
+   <property name="text">
+    <string>Add model file</string>
+   </property>
+  </action>
+  <action name="actionSet_training_pictures">
+   <property name="text">
+    <string>Set training pictures</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>start_screenshot_button</sender>
+   <signal>clicked()</signal>
+   <receiver>start_screenshot_button</receiver>
+   <slot>click()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>724</x>
+     <y>221</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>724</x>
+     <y>221</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>stop_screenshot_button</sender>
+   <signal>clicked()</signal>
+   <receiver>stop_screenshot_button</receiver>
+   <slot>click()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>669</x>
+     <y>317</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>669</x>
+     <y>317</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>training_button</sender>
+   <signal>clicked()</signal>
+   <receiver>training_button</receiver>
+   <slot>click()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>692</x>
+     <y>509</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>692</x>
+     <y>509</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cal_button</sender>
+   <signal>clicked()</signal>
+   <receiver>cal_button</receiver>
+   <slot>click()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>691</x>
+     <y>413</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>691</x>
+     <y>413</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

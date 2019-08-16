@@ -14,8 +14,8 @@ class iOSAppTime(QtWidgets.QMainWindow):
     def __init__(self):
         super(iOSAppTime, self).__init__()
         self.ui = Ui_MainWindow()
-        release_resource()
         self.ui.setupUi(self)
+        self.ui.start_update_ui_thread()
 
 def close_shared_server():
     state, pid = Ui_MainWindow.query_service(QueueManager.SHARED_PORT)
@@ -42,3 +42,8 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+# todo 用 2 debug 一下搜索算法
+# todo textBrowser 要改
+# todo 进程已经结束了，还在打印
+# todo 打印的信息是纵向的，应该是横向的

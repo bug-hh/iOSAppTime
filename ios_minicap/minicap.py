@@ -16,6 +16,10 @@ from multiprocessing import Process
 
 from queue_manager import QueueManager
 
+from config import JSON_MINICAP_KEY
+from config import JSON_PROGRESS_BAR_KEY
+from config import JSON_TEXT_BROWSER_KEY
+
 class MinicapStream(object):
     __instance = None
     __mutex = threading.Lock()
@@ -64,6 +68,8 @@ class MinicapStream(object):
 
     def _get_signal(self):
         try:
+            msg = self.shared_queue.get_nowait()
+
             return self.shared_queue.get_nowait()
         except queue.Empty:
             return 0

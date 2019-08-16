@@ -20,8 +20,10 @@ if not os.path.exists(ABOUT_TRAINING):
 
 STAGE = ['start', 'newlogo', 'ad', 'loading', 'words', 'end', 'home']
 ANDROID_PERCENT = {'start': 0.90, 'oldlogo': 0.90, 'newlogo': 0.90, 'ad': 0.55, 'loading': 0.60, 'words': 0.90, 'end': 0.9}
-IOS_PERCENT = {'start': 0.80, 'oldlogo': 0.90, 'newlogo': 0.90, 'ad': 0.90, 'loading': 0.50, 'words': 0.90, 'end': 0.85, 'home': 0.90}
+IOS_PERCENT = {'start': 0.90, 'oldlogo': 0.90, 'newlogo': 0.90, 'ad': 0.90, 'loading': 0.50, 'words': 0.85, 'end': 0.85, 'home': 0.90}
 SORTED_STAGE = {'start':1, 'newlogo':2, 'ad':3, 'loading':4, 'words':5, 'end':6}
 EXCLUDED_LIST = ['ad']
-WEICHAT_SEND_MESSAGE_URL = 'http://smsc.in.zhihu.com/message/send?userid=taffy'
-WEICHAT_GET_TOKEN_URL = 'http://smsc.in.zhihu.com/token'
+JSON_MINICAP_KEY = 'MINICAP'
+JSON_PROGRESS_BAR_KEY = 'PROGRESS_BAR'
+JSON_TEXT_BROWSER_KEY = 'TEXT_BROWSER'
+JSON_PID_KEY = 'pid'

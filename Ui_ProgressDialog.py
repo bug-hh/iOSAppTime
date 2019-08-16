@@ -22,12 +22,12 @@ class Ui_ProgressDialog(object):
         self.verticalLayout.setObjectName("verticalLayout")
         self.progress_bar_dt = {}
 
-        for k in task_dt:
+        for k in task_dt.values():
             progressBar = QtWidgets.QProgressBar(self.verticalLayoutWidget)
             progressBar.setProperty("value", 0)
             progressBar.setObjectName("progressBar")
             self.progress_bar_dt[k] = progressBar
-            self.progress_bar_dt[k].setMaximum(task_dt[k])
+            self.progress_bar_dt[k].setMaximum(200)
             self.verticalLayout.addWidget(progressBar)
 
         self.retranslateUi(ProgressDialog)

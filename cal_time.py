@@ -3,18 +3,34 @@
 import os
 import datetime
 import time
+import json
 
 from google_algorithm.label_image import identify_pic
+from queue_manager import QueueManager
 
 from config import STAGE, SORTED_STAGE, TMP_IMG_DIR
+from config import JSON_PROGRESS_BAR_KEY
+from config import JSON_TEXT_BROWSER_KEY
+from config import JSON_PID_KEY
 
 class CalTime(object):
-    def __init__(self, main_window, thread_signal, times_counter):
+    def __init__(self, main_window, times_counter):
         self.main_window = main_window
-        self.thread_signal = thread_signal
         self.times_counter = times_counter
         self.cache = {}
         self.progress = 0
+
+        QueueManager.register('get_ui_msg_queue')
+        QueueManager.register('get_answer_queue')
+        QueueManager.register('get_task_status', callable=lambda: self.task_pid_status)
+
+        self.manager = QueueManager(address=('localhost', QueueManager.SHARED_PORT), authkey=b'1234')
+        self.manager.connect()
+        self.shared_queue = self.manager.get_ui_msg_queue()
+        self.shared_answer_queue = self.manager.get_answer_queue()
+        self.shared_task_status_dt = self.manager.get_task_status()
+
+        self.PID = os.getpid()
 
 
     def upper_bound(self, pic_dir, pic_list, first, last, value):
@@ -30,6 +46,7 @@ class CalTime(object):
         '''
         z = 0
         length = last + 1
+        msg = {}
         while first < last:
             z += 1
             mid_index = first + (last - first) // 2
@@ -53,7 +70,9 @@ class CalTime(object):
             else:
                 last = mid_index
             self.progress += z
-            self.thread_signal.emit(self.times_counter, self.progress)
+            msg[JSON_PROGRESS_BAR_KEY] = (self.times_counter, self.progress)
+            self.shared_queue.put(json.dumps(msg))
+
         print("upper_bound: z = %d" % z)
         index = self._check_precise(first, pic_list, pic_dir, True)
         return index
@@ -61,6 +80,7 @@ class CalTime(object):
     def lower_bound(self, pic_dir, pic_list, first, last, value):
         z = 0
         length = last
+        msg = {JSON_PROGRESS_BAR_KEY: None}
         while first < last:
             z += 1
             mid_index = first + (last - first) // 2
@@ -83,7 +103,9 @@ class CalTime(object):
             else:
                 last = mid_index
             self.progress += z
-            self.thread_signal.emit(self.times_counter, self.progress)
+            msg[JSON_PROGRESS_BAR_KEY] = (self.times_counter, self.progress)
+            self.shared_queue.put(json.dumps(msg))
+
         print("lower_bound: z = %d" % z)
         index = self._check_precise(first, pic_list, pic_dir, False)
         return index
@@ -112,6 +134,7 @@ class CalTime(object):
         prob *= 1000
         prob = int(prob)
         direction = -1 if is_upper_bound else 1
+        msg = {}
         while prob < target_precise:
             y += 1
             pic_index += direction
@@ -120,7 +143,8 @@ class CalTime(object):
             prob *= 1000
             prob = int(prob)
             self.progress += y
-            self.thread_signal.emit(self.times_counter, self.progress)
+            msg[JSON_PROGRESS_BAR_KEY] = (self.times_counter, self.progress)
+            self.shared_queue.put(json.dumps(msg))
         print("check_precise: y = %d" % y)
         return pic_index
 
@@ -139,6 +163,7 @@ class CalTime(object):
         length = len(pic_list)
         summary = "总共包含 %d 张图片" % (length)
         print(summary)
+        msg = {}
         for stage in SORTED_STAGE:
             if stage in exclude_list:
                 continue
@@ -146,7 +171,11 @@ class CalTime(object):
             is_upper_bound = True if stage == 'start' else False
             search_result = search_method(pic_dir, pic_list, 0, length, SORTED_STAGE[stage])
             if not self._check_result(is_upper_bound, search_result, length):
-                print("%s 阶段不存在，线程退出" % stage)
+                error_str = "%s 阶段不存在，线程退出" % stage
+                print(error_str)
+                msg[JSON_TEXT_BROWSER_KEY] = tuple(error_str)
+                msg[JSON_PID_KEY] = self.PID
+                self.shared_queue.put(json.dumps(msg))
                 return
             else:
                 if is_upper_bound:
@@ -163,15 +192,23 @@ class CalTime(object):
         if ret['words'] != -1:
             home_page_loading_time += round((ret['words'] - ret['loading']), 4)
 
-        max_value = self.main_window.cal_progress_dialog.ui.progress_bar_dt[self.times_counter].maximum()
-        self.thread_signal.emit(self.times_counter, max_value)
         str2 = "App 启动时长：%.3fs   App 首页加载时长：%.3fs" % (launch_time, home_page_loading_time)
-        # todo 将最终结果显示在 text browser 上
         print(str2)
 
         now = time.time()
         interval = now - cur
-        print("总共计算耗时: %ds" % interval)
+        total_time = "process-%d 总共计算耗时: %ds" % (os.getpid(), interval)
+        print(total_time)
+
+        max_value = self.main_window.cal_progress_dialog.ui.progress_bar_dt[self.times_counter].maximum()
+
+        msg[JSON_PROGRESS_BAR_KEY] = (self.times_counter, max_value)
+        msg[JSON_TEXT_BROWSER_KEY] = (str2, total_time)
+        msg[JSON_PID_KEY] = self.PID
+        self.shared_queue.put(json.dumps(msg))
+
+        self.shared_task_status_dt.update({self.PID:True})
+        self.shared_answer_queue.put((launch_time, home_page_loading_time))
 
     @staticmethod
     def get_create_time(filename):

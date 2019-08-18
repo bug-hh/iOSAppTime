@@ -215,7 +215,7 @@ class Foo(QObject):
         for stage in SORTED_STAGE:
             if stage in exclude_list:
                 continue
-            
+
             search_method = self.upper_bound if stage == 'start' else self.lower_bound
             is_upper_bound = True if stage == 'start' else False
             # start 通过 newlogo 来算
@@ -253,10 +253,26 @@ class Foo(QObject):
         for k in ret:
             print(k, ret[k])
 
+
         print(str2)
         now = time.time()
         interval = now - cur
         print("总共计算耗时: %ds" % interval)
+
+        for k in ret:
+            if ret[k] == -1:
+                continue
+            d = os.path.basename(pic_dir)
+            human_value_list = config.HUMAN[d][k]
+            ts = human_value_list[0]
+            missing = int(abs(self.get_create_time(ts)*10**6 - ret[k][0]*10**6)/1000)
+            sss = "%s: %s 误差：%d ms 概率：%.8f" % (k, human_value_list[0], missing, human_value_list[-1])
+            print(sss)
+        d = os.path.basename(pic_dir)
+        human_value_list = config.HUMAN[d]['app']
+        sss = "App 启动时长：%.3fs  App 首页加载时长：%.3fs(loading -> words)  %.3fs(loading -> end)  %.3fs(words -> end)" \
+            % (human_value_list[0], human_value_list[1], human_value_list[2], human_value_list[3])
+        print(sss)
 
     def get_create_time(self, filename):
         fn, ext = os.path.splitext(filename)
@@ -279,10 +295,10 @@ if __name__ == '__main__':
         f.cal_time(pic_dir_path, config.EXCLUDED_LIST)
         print("################")
         print()
-    # start = f.get_create_time("2019-08-16_18-05-03-145833")
-    # loading = f.get_create_time("2019-08-16_18-05-05-522599")
-    # words = f.get_create_time("2019-08-16_18-05-06-805342")
-    # end = f.get_create_time("2019-08-16_18-05-07-147079")
+    # start = f.get_create_time("2019-08-16_17-47-15-511255")
+    # loading = f.get_create_time("2019-08-16_17-47-18-542763")
+    # words = f.get_create_time("2019-08-16_17-47-19-827864")
+    # end = f.get_create_time("2019-08-16_17-47-19-860089")
     #
     # print("start -> loading: ", loading - start)
     # print("loading -> words", words - loading)
@@ -290,6 +306,8 @@ if __name__ == '__main__':
     # print("words -> end", end - words)
     # pic_dir = "/Users/bughh/PycharmProjects/iOSAppTime/capture/tmp_pic/iOS"
     # id_dir = "9"
+    # temp = os.path.join(pic_dir, id_dir)
+    # print(os.path.basename(temp))
     # pic_name = "2019-08-16_18-05-07-147079.jpg"
     # pic_path = os.path.join(pic_dir, id_dir, pic_name)
     # print(identify_pic(pic_path))

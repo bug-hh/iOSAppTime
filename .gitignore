@@ -29,6 +29,7 @@ hs_err_pid*
 
 # capture pictures
 capture/
+capture2/
 
 # app
 app/

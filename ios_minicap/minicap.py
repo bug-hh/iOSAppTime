@@ -69,8 +69,7 @@ class MinicapStream(object):
     def _get_signal(self):
         try:
             msg = self.shared_queue.get_nowait()
-
-            return self.shared_queue.get_nowait()
+            return msg
         except queue.Empty:
             return 0
 
@@ -101,7 +100,7 @@ class MinicapStream(object):
             self.times = self._get_signal()
             if self.times > 0:
                 break
-        
+
         self._create_picture_dir()
         
         while True:

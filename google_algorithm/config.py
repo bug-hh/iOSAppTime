@@ -13,8 +13,6 @@ IOS_MODEL_NAME = "ios_zhihu_output_graph.pb"
 IOS_LABEL_NAME = "ios_zhihu_output_labels.txt"
 
 ABOUT_TRAINING = os.path.join(os.path.dirname(__file__), 'training')
-ABOUT_CAPTURE = os.path.join(os.path.dirname(__file__), 'capture', 'tmp_pic', 'iOS')
-
 TEST_APP = "zhihu"
 
 if not os.path.exists(ABOUT_TRAINING):
@@ -22,7 +20,7 @@ if not os.path.exists(ABOUT_TRAINING):
 
 STAGE = ['start', 'newlogo', 'ad', 'loading', 'words', 'end', 'home']
 ANDROID_PERCENT = {'start': 0.90, 'oldlogo': 0.90, 'newlogo': 0.90, 'ad': 0.55, 'loading': 0.60, 'words': 0.90, 'end': 0.9}
-IOS_PERCENT = {'start': 0.90, 'oldlogo': 0.90, 'newlogo': 0.90, 'ad': 0.90, 'loading': 0.80, 'words': 0.85, 'end': 0.85, 'home': 0.90}
+IOS_PERCENT = {'start': 0.90, 'oldlogo': 0.90, 'newlogo': 0.90, 'ad': 0.90, 'loading': 0.90, 'words': 0.85, 'end': 0.85, 'home': 0.90}
 SORTED_STAGE = {'start':1, 'newlogo':2, 'ad':3, 'loading':4, 'words':5, 'end':6}
 EXCLUDED_LIST = ['ad', 'newlogo']
 JSON_MINICAP_KEY = 'MINICAP'

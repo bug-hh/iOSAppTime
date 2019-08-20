@@ -180,7 +180,7 @@ class Foo(QObject):
         prob *= 10000
         prob = int(prob)
         last = None
-        while prob <= target_precise and pic_index < length:
+        while prob < target_precise and pic_index < length:
             y += 1
             pic_index += direction
             pic_path = os.path.join(pic_dir, pic_list[pic_index])
@@ -269,8 +269,8 @@ class Foo(QObject):
             print(sss)
         d = os.path.basename(pic_dir)
         human_value_list = config.HUMAN[d]['app']
-        sss = "App 启动时长：%.3fs  App 首页加载时长：%.3fs(loading -> words)  %.3fs(loading -> end)  %.3fs(words -> end)" \
-            % (human_value_list[0], human_value_list[1], human_value_list[2], human_value_list[3])
+        sss = "App 启动时长：%.3fs  App 首页加载时长：%.3fs(loading -> end)" \
+            % (human_value_list[0], human_value_list[1])
         print(sss)
 
     def get_create_time(self, filename):
@@ -303,29 +303,26 @@ class Foo(QObject):
 
 
 if __name__ == '__main__':
-    # f = Foo()
-    # ios_dir = os.path.join(TMP_IMG_DIR, "iOS")
-    # pic_dir_list = os.listdir(ios_dir)
-    # pic_dir_list.sort()
-    # for pic_dir in pic_dir_list:
-    #     if pic_dir.startswith("."):
-    #         continue
-    #     if pic_dir != '2':
-    #         continue
-    #     print(pic_dir)
-    #     pic_dir_path = os.path.join(ios_dir, pic_dir)
-    #     f.cal_time(pic_dir_path, config.EXCLUDED_LIST)
-    #     print("################")
-    #     print()
-    # start = f.get_create_time("2019-08-16_17-47-15-511255")
-    # loading = f.get_create_time("2019-08-16_17-47-18-542763")
-    # words = f.get_create_time("2019-08-16_17-47-19-827864")
-    # end = f.get_create_time("2019-08-16_17-47-19-860089")
+    f = Foo()
+    ios_dir = os.path.join(TMP_IMG_DIR, "iOS")
+    pic_dir_list = os.listdir(ios_dir)
+    pic_dir_list.sort()
+    for pic_dir in pic_dir_list:
+        if pic_dir.startswith("."):
+            continue
+        if pic_dir != '2':
+            continue
+        print(pic_dir)
+        pic_dir_path = os.path.join(ios_dir, pic_dir)
+        f.cal_time(pic_dir_path, config.EXCLUDED_LIST)
+        print("################")
+        print()
+    # start = f.get_create_time("2019-08-16_17-49-30-716272")
+    # loading = f.get_create_time("2019-08-16_17-49-33-859590")
+    # end = f.get_create_time("2019-08-16_17-49-34-890767")
     #
     # print("start -> loading: ", loading - start)
-    # print("loading -> words", words - loading)
     # print("loading -> end: ", end - loading)
-    # print("words -> end", end - words)
     # pic_dir = "/Users/bughh/PycharmProjects/iOSAppTime/capture/tmp_pic/iOS"
     # id_dir = "10"
     # temp = os.path.join(pic_dir, id_dir)
@@ -333,8 +330,8 @@ if __name__ == '__main__':
     # pic_name = "2019-08-16_18-07-08-603432.jpg"
     # pic_path = os.path.join(pic_dir, id_dir, pic_name)
     # print(identify_pic(pic_path))
-    f = Foo()
-    f.test2()
+    # f = Foo()
+    # f.test2()
 
 # todo 1、先用带有 check_precise 跑一次所有的文件夹，其中 check_precise 只包含 「while id_ret[0] != target_stage and pic_index < length」 的情况
 # todo 2、再用带有 check_precise 跑一次所有的文件夹，其中 check_precise 包含 「while id_ret[0] != target_stage and pic_index < length」和 「while prob < target_precise and pic_index < length」的情况

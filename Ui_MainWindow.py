@@ -132,7 +132,7 @@ class Ui_MainWindow(QtCore.QObject):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
         self.CLOCK = QTimer()
-        self.CLOCK.setInterval(1000)
+        self.CLOCK.setInterval(500)
         self.CLOCK.timeout.connect(self._count_down)
 
         self.i = 0
@@ -158,7 +158,7 @@ class Ui_MainWindow(QtCore.QObject):
         self.shared_task_status_dt = self.manager.get_task_status()
 
         self.start_screenshot_button.setEnabled(True)
-        self.stop_screenshot_button.setEnabled(False)
+        self.stop_screenshot_button.setEnabled(True)
 
         self.times = 1
 
@@ -256,6 +256,7 @@ class Ui_MainWindow(QtCore.QObject):
         self.minicap.run()
         self.shared_queue.put(self.times)
         self.textBrowser.append("第 %d 次截图开始" % self.times)
+        self.textBrowser.append("请等待 5 s，再点击 app 截图")
 
         self.times += 1
 

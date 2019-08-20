@@ -281,8 +281,8 @@ if __name__ == '__main__':
     # print("loading -> end: ", end - loading)
     # print("words -> end", end - words)
     pic_dir = "/Users/bughh/PycharmProjects/iOSAppTime/capture/tmp_pic/iOS"
-    id_dir = "9"
-    pic_name = "2019-08-16_18-05-07-147079.jpg"
+    id_dir = "5"
+    pic_name = "2019-08-16_17-49-34-890767.jpg"
     pic_path = os.path.join(pic_dir, id_dir, pic_name)
     print(identify_pic(pic_path))
 

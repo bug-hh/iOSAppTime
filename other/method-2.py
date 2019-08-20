@@ -173,14 +173,14 @@ class Foo(QObject):
             pic_path = os.path.join(pic_dir, pic_list[pic_index])
             id_ret = identify_pic(pic_path)
 
-        if target_stage not in ('start', 'loading'):
+        if target_stage not in ('start', 'loading', 'end'):
             return pic_index, id_ret
 
         prob = round(id_ret[1], 4)
         prob *= 10000
         prob = int(prob)
         last = None
-        while prob < target_precise and pic_index < length:
+        while prob <= target_precise and pic_index < length:
             y += 1
             pic_index += direction
             pic_path = os.path.join(pic_dir, pic_list[pic_index])
@@ -215,7 +215,6 @@ class Foo(QObject):
         for stage in SORTED_STAGE:
             if stage in exclude_list:
                 continue
-
             search_method = self.upper_bound if stage == 'start' else self.lower_bound
             is_upper_bound = True if stage == 'start' else False
             # start 通过 newlogo 来算
@@ -248,7 +247,7 @@ class Foo(QObject):
             home_page_loading_time_2 = round((ret['end'][0] - ret['loading'][0]), 4)
 
         # self.result_queue.put((launch_time, home_page_loading_time))
-        str2 = "App 启动时长：%.3fs   App 首页加载时长：%.3fs     %.3f" % (launch_time, home_page_loading_time, home_page_loading_time_2)
+        str2 = "App 启动时长：%.3fs   App 首页加载时长：%.3fs(loading->words)     %.3fs(loading->end)" % (launch_time, home_page_loading_time, home_page_loading_time_2)
 
         for k in ret:
             print(k, ret[k])
@@ -280,21 +279,44 @@ class Foo(QObject):
         ts = datetime.datetime.timestamp(d)
         return ts
 
+    def linear(self):
+        pass
+
+    def test2(self):
+        stage_dir = os.path.join(config.ABOUT_TRAINING, "zhihu", "test2")
+        stage_list = os.listdir(stage_dir)
+        stage_list.sort()
+        for s in stage_list:
+            if s.startswith("."):
+                continue
+            print(s)
+            path_stage = os.path.join(stage_dir, s)
+            pic_list = os.listdir(path_stage)
+            pic_list.sort()
+            for pic in pic_list:
+                if pic.startswith("."):
+                    continue
+                path_pic = os.path.join(path_stage, pic)
+                ret = identify_pic(path_pic)
+                print(pic, ret)
+            print("------------")
 
 
 if __name__ == '__main__':
-    f = Foo()
-    ios_dir = os.path.join(TMP_IMG_DIR, "iOS")
-    pic_dir_list = os.listdir(ios_dir)
-    pic_dir_list.sort()
-    for pic_dir in pic_dir_list:
-        if pic_dir.startswith("."):
-            continue
-        print(pic_dir)
-        pic_dir_path = os.path.join(ios_dir, pic_dir)
-        f.cal_time(pic_dir_path, config.EXCLUDED_LIST)
-        print("################")
-        print()
+    # f = Foo()
+    # ios_dir = os.path.join(TMP_IMG_DIR, "iOS")
+    # pic_dir_list = os.listdir(ios_dir)
+    # pic_dir_list.sort()
+    # for pic_dir in pic_dir_list:
+    #     if pic_dir.startswith("."):
+    #         continue
+    #     if pic_dir != '2':
+    #         continue
+    #     print(pic_dir)
+    #     pic_dir_path = os.path.join(ios_dir, pic_dir)
+    #     f.cal_time(pic_dir_path, config.EXCLUDED_LIST)
+    #     print("################")
+    #     print()
     # start = f.get_create_time("2019-08-16_17-47-15-511255")
     # loading = f.get_create_time("2019-08-16_17-47-18-542763")
     # words = f.get_create_time("2019-08-16_17-47-19-827864")
@@ -305,12 +327,14 @@ if __name__ == '__main__':
     # print("loading -> end: ", end - loading)
     # print("words -> end", end - words)
     # pic_dir = "/Users/bughh/PycharmProjects/iOSAppTime/capture/tmp_pic/iOS"
-    # id_dir = "9"
+    # id_dir = "10"
     # temp = os.path.join(pic_dir, id_dir)
     # print(os.path.basename(temp))
-    # pic_name = "2019-08-16_18-05-07-147079.jpg"
+    # pic_name = "2019-08-16_18-07-08-603432.jpg"
     # pic_path = os.path.join(pic_dir, id_dir, pic_name)
     # print(identify_pic(pic_path))
+    f = Foo()
+    f.test2()
 
 # todo 1、先用带有 check_precise 跑一次所有的文件夹，其中 check_precise 只包含 「while id_ret[0] != target_stage and pic_index < length」 的情况
 # todo 2、再用带有 check_precise 跑一次所有的文件夹，其中 check_precise 包含 「while id_ret[0] != target_stage and pic_index < length」和 「while prob < target_precise and pic_index < length」的情况

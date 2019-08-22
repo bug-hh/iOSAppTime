@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
-from queue_manager import QueueManager
-from multiprocessing import Process
-import os
 
 import time
 import queue
-import multiprocessing
+import subprocess
+from multiprocessing import Process
+
 
 class Hoo(object):
     def __init__(self, eoo):
@@ -43,7 +42,26 @@ def g():
         time.sleep(2)
     return "g"
 
+
 if __name__ == '__main__':
-    dt = {'a': 1, 'b': 2}
-    for i in dt.values():
-        print(i)
+    from app_config.config import ABOUT_TRAINING, TEST_APP, IOS_MODEL_NAME, IOS_LABEL_NAME, RETRAIN_PATH
+    import os
+    from google_algorithm.training import start_training
+    image_path = os.path.join(ABOUT_TRAINING, "zhihu", "iOS_1-50")
+    output_graph = os.path.join(ABOUT_TRAINING, TEST_APP, "debug", "model", IOS_MODEL_NAME)
+    output_labels = os.path.join(ABOUT_TRAINING, TEST_APP, "debug", "labels", IOS_LABEL_NAME)
+
+    cmd = "python3 %s --image_dir %s --output_graph %s --output_labels %s" % (
+    RETRAIN_PATH, image_path, output_graph, output_labels)
+    process_training = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+    fobj = open("terminal_text.txt", "w")
+    while True:
+        try:
+            out, err = process_training.communicate(1)
+            fobj.write(out)
+            fobj.flush()
+            if process_training.poll() is not None:
+                pass
+        except subprocess.TimeoutExpired:
+            pass
+

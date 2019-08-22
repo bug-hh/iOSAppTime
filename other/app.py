@@ -5,7 +5,7 @@ import os
 import sys
 import time
 from subprocess import Popen, PIPE
-from config import APK_PATH
+from app_config.config import APK_PATH
 
 class Android(object):
     def __init__(self, device_id):

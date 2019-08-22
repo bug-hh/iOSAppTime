@@ -20,8 +20,8 @@ import numpy as np
 import tensorflow as tf
 import os
 
-from config import ABOUT_TRAINING
-from config import IOS_MODEL_NAME
+from app_config.config import ABOUT_TRAINING
+from app_config.config import IOS_MODEL_NAME
 
 def load_graph(model_file):
   graph = tf.Graph()

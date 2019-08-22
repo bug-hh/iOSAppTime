@@ -5,7 +5,7 @@ import time
 from subprocess import PIPE
 
 from other.app import Android
-from config import PACKAGE_NAME, ACTIVITY_PATH, TMP_IMG_DIR, ANDROID_PERCENT, STAGE
+from app_config.config import PACKAGE_NAME, ACTIVITY_PATH, TMP_IMG_DIR, ANDROID_PERCENT, STAGE
 from google_algorithm.label_image import identify_pic
 from record import Record
 

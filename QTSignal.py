@@ -32,6 +32,7 @@ class QTSignal(QObject):
         for key in self.dt_signal:
             self.dt_signal[key].disconnect(self.slot_placeholder)
 
+
         # for k in dialog.ui.progress_bar_dt:
         #     self.dt_signal[k].connect(main_window.update_progress_bar)
 

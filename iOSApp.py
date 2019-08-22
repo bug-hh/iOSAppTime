@@ -2,10 +2,9 @@
 # coding: utf-8
 
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import pyqtSignal
 
 from Ui_MainWindow import Ui_MainWindow
-from queue_manager import QueueManager
+from msg_queue.queue_manager import QueueManager
 
 import os
 import sys
@@ -32,6 +31,7 @@ def release_resource():
     close_minicap()
 
 def main():
+    release_resource()
     try:
         app = QtWidgets.QApplication([])
         application = iOSAppTime()

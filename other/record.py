@@ -2,12 +2,8 @@
 import os
 import shutil
 
-from config import TMP_IMG_DIR
+from app_config.config import TMP_IMG_DIR
 from ios_minicap.minicap import MinicapStream
-
-from subprocess import Popen
-from subprocess import PIPE
-from subprocess import TimeoutExpired
 
 import socket
 

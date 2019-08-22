@@ -3,23 +3,17 @@
 
 
 import os
-import cv2
-import shutil
-import sys
-import cmath
 import datetime
 
-from PyQt5.QtCore import QThread
 from PyQt5.QtCore import QObject, pyqtSignal
 
 from google_algorithm.label_image import identify_pic
-from config import STAGE, SORTED_STAGE, TMP_IMG_DIR, IOS_PERCENT
-from queue_manager import QueueManager
+from app_config.config import STAGE, SORTED_STAGE, IOS_PERCENT, TMP_IMG_DIR
 
-import threading
 import time
 import queue
-import config
+from app_config import config
+
 
 class Foo(QObject):
     dt_signal = {}
@@ -215,6 +209,8 @@ class Foo(QObject):
         for stage in SORTED_STAGE:
             if stage in exclude_list:
                 continue
+            if stage != 'end':
+                continue
             search_method = self.upper_bound if stage == 'start' else self.lower_bound
             is_upper_bound = True if stage == 'start' else False
             # start 通过 newlogo 来算
@@ -303,33 +299,37 @@ class Foo(QObject):
 
 
 if __name__ == '__main__':
-    f = Foo()
-    ios_dir = os.path.join(TMP_IMG_DIR, "iOS")
-    pic_dir_list = os.listdir(ios_dir)
-    pic_dir_list.sort()
-    for pic_dir in pic_dir_list:
-        if pic_dir.startswith("."):
-            continue
-        if pic_dir != '2':
-            continue
-        print(pic_dir)
-        pic_dir_path = os.path.join(ios_dir, pic_dir)
-        f.cal_time(pic_dir_path, config.EXCLUDED_LIST)
-        print("################")
-        print()
+    # f = Foo()
+    # ios_dir = os.path.join(TMP_IMG_DIR, "iOS")
+    # pic_dir_list = os.listdir(ios_dir)
+    # pic_dir_list.sort()
+    # for pic_dir in pic_dir_list:
+    #     if pic_dir.startswith("."):
+    #         continue
+    #     if pic_dir != '8':
+    #         continue
+    #     print(pic_dir)
+    #     pic_dir_path = os.path.join(ios_dir, pic_dir)
+    #     f.cal_time(pic_dir_path, config.EXCLUDED_LIST)
+    #     print("################")
+    #     print()
     # start = f.get_create_time("2019-08-16_17-49-30-716272")
     # loading = f.get_create_time("2019-08-16_17-49-33-859590")
     # end = f.get_create_time("2019-08-16_17-49-34-890767")
     #
     # print("start -> loading: ", loading - start)
     # print("loading -> end: ", end - loading)
-    # pic_dir = "/Users/bughh/PycharmProjects/iOSAppTime/capture/tmp_pic/iOS"
-    # id_dir = "10"
-    # temp = os.path.join(pic_dir, id_dir)
-    # print(os.path.basename(temp))
-    # pic_name = "2019-08-16_18-07-08-603432.jpg"
-    # pic_path = os.path.join(pic_dir, id_dir, pic_name)
-    # print(identify_pic(pic_path))
+    pic_dir = "/Users/bughh/PycharmProjects/iOSAppTime/capture/tmp_pic/iOS"
+    id_dir = "8"
+    temp = os.path.join(pic_dir, id_dir)
+    print(os.path.basename(temp))
+    pic_name = "2019-08-16_17-59-41-518037.jpg"
+    pic_path = os.path.join(pic_dir, id_dir, pic_name)
+    # t1 = time.time()
+    ret = identify_pic(pic_path)
+    print(ret)
+    # t2 = time.time()
+    # print(t2 - t1)
     # f = Foo()
     # f.test2()
 

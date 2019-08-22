@@ -6,12 +6,12 @@ import time
 import json
 
 from google_algorithm.label_image import identify_pic
-from queue_manager import QueueManager
+from msg_queue.queue_manager import QueueManager
 
-from config import STAGE, SORTED_STAGE, TMP_IMG_DIR
-from config import JSON_PROGRESS_BAR_KEY
-from config import JSON_TEXT_BROWSER_KEY
-from config import JSON_PID_KEY
+from app_config.config import STAGE, SORTED_STAGE
+from app_config.config import JSON_PROGRESS_BAR_KEY
+from app_config.config import JSON_TEXT_BROWSER_KEY
+from app_config.config import JSON_PID_KEY
 
 class CalTime(object):
     def __init__(self, main_window, times_counter):

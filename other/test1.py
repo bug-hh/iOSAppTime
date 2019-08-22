@@ -3,23 +3,16 @@
 
 
 import os
-import cv2
-import shutil
-import sys
-import cmath
 import datetime
 
-from PyQt5.QtCore import QThread
 from PyQt5.QtCore import QObject, pyqtSignal
 
 from google_algorithm.label_image import identify_pic
-from config import STAGE, SORTED_STAGE, TMP_IMG_DIR, IOS_PERCENT
-from queue_manager import QueueManager
+from app_config.config import STAGE, SORTED_STAGE, IOS_PERCENT
 
-import threading
 import time
 import queue
-import config
+
 
 class Foo(QObject):
     dt_signal = {}

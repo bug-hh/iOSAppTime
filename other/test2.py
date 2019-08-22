@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-from queue_manager import QueueManager
-from test3 import Hoo
+from msg_queue.queue_manager import QueueManager
 
 from multiprocessing import Process
 from threading import Thread

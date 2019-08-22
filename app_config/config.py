@@ -4,20 +4,17 @@ import os
 PACKAGE_NAME = 'com.zhihu.ios-dev'
 ACTIVITY_PATH = '.app.ui.activity.LauncherActivity'
 
-ROOT_PATH = os.path.dirname(__file__)
+ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 RETRAIN_PATH = os.path.join(ROOT_PATH, "google_algorithm", "retrain.py")
-APK_PATH = os.path.join(os.path.dirname(__file__), 'app', 'zhihu_v6_4_0.apk')
-
-TMP_IMG_DIR = os.path.join(os.path.dirname(__file__), 'capture', 'tmp_pic')
+APK_PATH = os.path.join(ROOT_PATH, 'app', 'zhihu_v6_4_0.apk')
+TMP_IMG_DIR = os.path.join(ROOT_PATH, 'capture', 'tmp_pic')
 # TMP_IMG_DIR = os.path.join(os.path.dirname(__file__), 'capture2', 'tmp_pic2')
 
-
-IOS_MINICAP_PATH = os.path.join(os.path.dirname(__file__), 'minicap', 'ios_run.sh')
 IOS_MODEL_NAME = "ios_zhihu_output_graph.pb"
 IOS_LABEL_NAME = "ios_zhihu_output_labels.txt"
 
-ABOUT_TRAINING = os.path.join(os.path.dirname(__file__), 'training')
-ABOUT_CAPTURE = os.path.join(os.path.dirname(__file__), 'capture', 'tmp_pic', 'iOS')
+ABOUT_TRAINING = os.path.join(ROOT_PATH, 'training')
+ABOUT_CAPTURE = os.path.join(ROOT_PATH, 'capture', 'tmp_pic', 'iOS')
 
 TEST_APP = "zhihu"
 
@@ -67,7 +64,7 @@ HUMAN = {
     '8': {
         'start': ['2019-08-16_17-59-37-988644', 338, 0.99865294],
         'loading': ['2019-08-16_17-59-40-618910', 93, 0.986413],
-        'end': ['2019-08-16_17-59-42-167672', 452, 0.74302435],
+        'end': ['2019-08-16_17-59-41-518037', 452, 0.88572186],
         'app': [2.630, 1.548]
     },
 

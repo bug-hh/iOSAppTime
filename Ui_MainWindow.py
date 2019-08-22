@@ -7,9 +7,10 @@
 # WARNING! All changes made in this file will be lost!
 
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import QProgressDialog
 from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import pyqtSignal
 
 from PyQt5.QtWidgets import QFileDialog
 
@@ -19,38 +20,42 @@ from threading import Thread
 from queue import Queue
 
 from ios_minicap.minicap import MinicapStream
-from queue_manager import QueueManager
+from msg_queue.queue_manager import QueueManager
 
-from config import TMP_IMG_DIR
-from config import STAGE
-from config import IOS_PERCENT
-from config import ABOUT_TRAINING
-from config import IOS_MODEL_NAME
-from config import IOS_LABEL_NAME
-from config import TEST_APP
-from config import RETRAIN_PATH
-from config import SORTED_STAGE
-from config import EXCLUDED_LIST
-from config import JSON_MINICAP_KEY
-from config import JSON_PROGRESS_BAR_KEY
-from config import JSON_TEXT_BROWSER_KEY
-from config import JSON_PID_KEY
+from app_config.config import TMP_IMG_DIR
+from app_config.config import ABOUT_TRAINING
+from app_config.config import IOS_MODEL_NAME
+from app_config.config import IOS_LABEL_NAME
+from app_config.config import TEST_APP
+from app_config.config import SORTED_STAGE
+from app_config.config import EXCLUDED_LIST
+from app_config.config import JSON_PROGRESS_BAR_KEY
+from app_config.config import JSON_TEXT_BROWSER_KEY
+from app_config.config import JSON_PID_KEY
+from app_config.config import RETRAIN_PATH
 
 from CalProgressDialog import CalProgressDialog
-from google_algorithm.label_image import identify_pic
 from QTSignal import QTSignal
 from cal_time import CalTime
+from google_algorithm import training
+
 
 import os
 import time
 import queue
 import subprocess
-import threading
 import math
 import json
-import multiprocessing
+
 
 class Ui_MainWindow(QtCore.QObject):
+
+    signal_training_progress = pyqtSignal(str)
+
+    def __init__(self):
+        super(Ui_MainWindow, self).__init__()
+        self.signal_training_progress.connect(self.update_text_browser)
+
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(800, 600)
@@ -110,14 +115,10 @@ class Ui_MainWindow(QtCore.QObject):
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
         MainWindow.setStatusBar(self.statusbar)
-        self.actionSet_ipa_file_path = QtWidgets.QAction(MainWindow)
-        self.actionSet_ipa_file_path.setObjectName("actionSet_ipa_file_path")
         self.actionAdd_model_file = QtWidgets.QAction(MainWindow)
         self.actionAdd_model_file.setObjectName("actionAdd_model_file")
         self.actionSet_training_pictures = QtWidgets.QAction(MainWindow)
         self.actionSet_training_pictures.setObjectName("actionSet_training_pictures")
-        self.menu.addAction(self.actionSet_ipa_file_path)
-        self.menu.addSeparator()
         self.menu.addAction(self.actionAdd_model_file)
         self.menu.addSeparator()
         self.menu.addAction(self.actionSet_training_pictures)
@@ -131,9 +132,16 @@ class Ui_MainWindow(QtCore.QObject):
         self.cal_button.clicked.connect(self.on_click_cal_button)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
+        self.actionAdd_model_file.triggered.connect(self.on_click_set_model_action)
+        self.actionSet_training_pictures.triggered.connect(self.on_click_set_pic_action)
+
         self.CLOCK = QTimer()
         self.CLOCK.setInterval(500)
         self.CLOCK.timeout.connect(self._count_down)
+
+        self.TRAINING_CLOCK = QTimer()
+        self.TRAINING_CLOCK.setInterval(1000)
+        self.TRAINING_CLOCK.timeout.connect(self._training_count_down)
 
         self.i = 0
         self.percent = 20
@@ -157,13 +165,24 @@ class Ui_MainWindow(QtCore.QObject):
         self.shared_answer_queue = self.manager.get_answer_queue()
         self.shared_task_status_dt = self.manager.get_task_status()
 
-        self.start_screenshot_button.setEnabled(True)
-        self.stop_screenshot_button.setEnabled(True)
+        self.start_screenshot_button.setEnabled(False)
+        self.stop_screenshot_button.setEnabled(False)
+        self.cal_button.setEnabled(False)
 
         self.times = 1
 
         self.fileDialog = None
         self.fn_index_dt = {}
+
+        self._setup_msg_box()
+        # self._setup_file_dialog("")
+        self.fileDialog = None
+
+        self.remind_user = True
+        self.training_pic_dir = os.path.join(ABOUT_TRAINING, TEST_APP, "iOS_1-50")
+        self.model_path = os.path.join(ABOUT_TRAINING, TEST_APP, "model", IOS_MODEL_NAME)
+
+        self.DEBUG = True
 
     def start_update_ui_thread(self):
         self.ui_update_thread = Thread(target=self._update_ui)
@@ -186,15 +205,17 @@ class Ui_MainWindow(QtCore.QObject):
                     elif key == JSON_PID_KEY:
                         data_pid = msg[key]
                 if data_browser:
-                    self._update_text_browser(data_browser, data_pid)
+                    self._update_info(data_browser, data_pid)
                 if data_progress:
                     self._update_progress(data_progress)
             except queue.Empty:
                 pass
+            except ConnectionResetError:
+                print("connection has been reset")
+                return
 
-    def _update_text_browser(self, data_browser, pid):
-        for data in data_browser:
-            self.textBrowser.append("pid %d - %s" % (pid, data))
+    def _update_info(self, data_browser, pid):
+        self.signal_training_progress.emit("pid %d - %s" % (pid, ''.join(data_browser)))
 
     def _update_progress(self, data_progress):
         pb_index, value = data_progress
@@ -238,10 +259,9 @@ class Ui_MainWindow(QtCore.QObject):
         self.training_button.setText(_translate("MainWindow", "一键训练"))
         self.platform_label_text.setText(_translate("MainWindow", "系统版本："))
         self.app_name_label_text.setText(_translate("MainWindow", "被测 APP 版本:"))
-        self.menu.setTitle(_translate("MainWindow", "File"))
-        self.actionSet_ipa_file_path.setText(_translate("MainWindow", "Set ipa file path"))
-        self.actionAdd_model_file.setText(_translate("MainWindow", "Add model file"))
-        self.actionSet_training_pictures.setText(_translate("MainWindow", "Set training pictures"))
+        self.menu.setTitle(_translate("MainWindow", "文件"))
+        self.actionAdd_model_file.setText(_translate("MainWindow", "添加模型文件"))
+        self.actionSet_training_pictures.setText(_translate("MainWindow", "设置训练图片"))
 
     def _start_minicap(self):
         cwd = os.getcwd()
@@ -345,27 +365,33 @@ class Ui_MainWindow(QtCore.QObject):
     def update_progress_bar(self, progress_bar_id, value):
         self.cal_progress_dialog.ui.progress_bar_dt[progress_bar_id].setValue(value)
 
-    def _get_training_status(self):
-        msg = {}
-        while True:
-            try:
-                outs, errs = self.proc_training.communicate(timeout=6)
-                msg[JSON_TEXT_BROWSER_KEY] = (outs, errs)
-                msg[JSON_PID_KEY] = os.getpid()
-                self.shared_ui_msg_queue.put(json.dumps(msg))
-                if self.proc_training.poll is not None:
-                    return
-            except subprocess.TimeoutExpired:
-                pass
+    def update_text_browser(self, text):
+        self.textBrowser.append(text)
 
     def _start_training(self, image_path):
-        output_graph = os.path.join(ABOUT_TRAINING, TEST_APP, "model", IOS_MODEL_NAME)
-        output_labels = os.path.join(ABOUT_TRAINING, TEST_APP, "labels", IOS_LABEL_NAME)
+        if self.DEBUG:
+            output_graph = os.path.join(ABOUT_TRAINING, TEST_APP, "debug", "model", IOS_MODEL_NAME)
+            output_labels = os.path.join(ABOUT_TRAINING, TEST_APP, "debug", "labels", IOS_LABEL_NAME)
 
-        cmd = '''python3 --image_dir %s --output_graph %s --output_labels %s %s''' % (image_path, output_graph, output_labels, RETRAIN_PATH)
-        self.proc_training = subprocess.Popen(args=cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        proc_training_status = Process(target=self._get_training_status)
-        proc_training_status.start()
+            if not os.path.exists(output_graph):
+                os.makedirs(os.path.dirname(output_graph))
+
+            if not os.path.exists(output_labels):
+                os.makedirs(os.path.dirname(output_labels))
+        else:
+            output_graph = os.path.join(ABOUT_TRAINING, TEST_APP, "model", IOS_MODEL_NAME)
+            output_labels = os.path.join(ABOUT_TRAINING, TEST_APP, "labels", IOS_LABEL_NAME)
+
+            if not os.path.exists(output_graph):
+                os.makedirs(os.path.dirname(output_graph))
+
+            if not os.path.exists(output_labels):
+                os.makedirs(os.path.dirname(output_labels))
+
+        process_training = Process(target=training.start_training, args=(image_path, output_graph, output_labels))
+        process_training.start()
+        # self._startup_progress_dialog("训练模型中", 420, False, self.TRAINING_CLOCK)
+
 
     def _checkout_ios_minicap(self):
         status, pid = Ui_MainWindow.query_service(QueueManager.MINICAP_PORT)
@@ -379,8 +405,9 @@ class Ui_MainWindow(QtCore.QObject):
     def on_click_minicap_button(self):
         # 首先查询 ios-minicap 的状态，如果状态不是 listen，则重新启动
         self._checkout_ios_minicap()
+        self.textBrowser.append("正在启动 ios-minicap，请等待 5 s，再开始操作")
         # 添加一个 dialog，倒数 5s,倒数 5s 后，显示启动成功
-        self._startup_progress_dialog()
+        self._startup_progress_dialog("Waiting for ios-minicap", 5, True, self.CLOCK)
         self.start_screenshot_button.setEnabled(True)
         self.stop_screenshot_button.setEnabled(True)
 
@@ -394,7 +421,7 @@ class Ui_MainWindow(QtCore.QObject):
         # 首先查询 ios-minicap 的状态，如果状态不是 listen，则重新启动
         self._checkout_ios_minicap()
         self._start_screenshot_process()
-        self._startup_progress_dialog()
+        self._startup_progress_dialog("Waiting for ios-minicap", 5, True, self.CLOCK)
         self.start_screenshot_button.setEnabled(False)
 
     def on_click_stop_screenshot_button(self):
@@ -413,29 +440,60 @@ class Ui_MainWindow(QtCore.QObject):
 
     def on_click_training_button(self):
         # todo 弹出一个对话框，让用户选择训练图片文件夹，pb 和 label 文件不用指定路径，存放在默认路径
-        # 选择完 image 文件夹后，调用 _start_training
-        if not self.fileDialog:
-            self._setup_file_dialog()
+        # 选择完 image 文件夹后，调用 _start_training, self.training_pic_dir 初始化为默认路径
+        if self.remind_user:
+            self.message_box.exec()
+            self.remind_user = False if self.check_box.isChecked() else True
+            self._setup_file_dialog("Open image dir", True, os.path.join(ABOUT_TRAINING, TEST_APP, "iOS_1-50"))
+            if self.fileDialog.exec():
+                self.training_pic_dir = self.fileDialog.selectedFiles()[0]
+                print(self.training_pic_dir)
+                self.fileDialog.setDirectory(self.training_pic_dir)
+        self._start_training(self.training_pic_dir)
 
-        if self.fileDialog.exec():
-            image_path = self.fileDialog.selectedFiles()[0]
-            self.fileDialog.setDirectory(image_path)
-            self._start_training(image_path)
+    def on_click_set_pic_action(self):
+        self._setup_file_dialog("打开一组训练图片文件夹的父文件夹", True, os.path.join(ABOUT_TRAINING, TEST_APP, "iOS_1-50"))
+        self.fileDialog.exec()
+        self.training_pic_dir = self.fileDialog.selectedFiles()[0]
+        self.fileDialog.setDirectory(self.training_pic_dir)
 
-    def _setup_file_dialog(self):
-        self.fileDialog = QFileDialog(parent=None, caption="Open image dir")
-        self.fileDialog.setModal(True)
-        self.fileDialog.setFileMode(QFileDialog.DirectoryOnly)
+    def on_click_set_model_action(self):
+        self._setup_file_dialog("选择一个 模型(.pb)文件", True, os.path.join(ABOUT_TRAINING, TEST_APP, "iOS_1-50"))
+        self.fileDialog.exec()
+        self.model_path = self.fileDialog.selectedFiles()[0]
+        self.fileDialog.setDirectory(self.training_pic_dir)
+
+    def _setup_msg_box(self):
+        self.message_box = QtWidgets.QMessageBox()
+        self.message_box.setText("在训练之前，请先选择带有标签的图片文件夹的父文件夹")
+        self.message_box.setInformativeText("不再提醒我")
+        self.check_box = QtWidgets.QCheckBox()
+        self.message_box.setCheckBox(self.check_box)
+
+    def _setup_file_dialog(self, title, is_modal, default_dir):
+        # self.fileDialog = QFileDialog(parent=None, caption="Open image dir")
+        self.fileDialog = QFileDialog(parent=None, caption=title)
+        self.fileDialog.setModal(is_modal)
         self.fileDialog.setViewMode(QFileDialog.List)
-        default_image_dir = os.path.join(ABOUT_TRAINING, TEST_APP, "iOS_1-50")
-        self.fileDialog.setDirectory(default_image_dir)
+        # default_image_dir = os.path.join(ABOUT_TRAINING, TEST_APP, "iOS_1-50")
+        self.fileDialog.setDirectory(default_dir)
 
-    def _startup_progress_dialog(self):
-        self.progressDialog = QProgressDialog("Waiting for ios-minicap", "cancel", 0, 5)
+    def _startup_progress_dialog(self, info, max_num, is_modal, para_clock):
+        # self.progressDialog = QProgressDialog("Waiting for ios-minicap", "cancel", 0, 5)
+        self.i = 0
+        self.progressDialog = QProgressDialog(info, "cancel", 0, max_num)
         self.progressDialog.setFixedWidth(500)
         self.progressDialog.setAutoClose(True)
-        self.progressDialog.setModal(True)
-        self.CLOCK.start(5000)
+        self.progressDialog.setModal(is_modal)
+        para_clock.start(max_num * 1000)
+
+    def _training_count_down(self):
+        self.progressDialog.setValue(self.i + 1)
+        self.progressDialog.setLabelText("训练进度： %d/420" % self.i)
+        self.i += 1
+        if self.i >= 420:
+            self.TRAINING_CLOCK.stop()
+            self.i = 0
 
     def _count_down(self):
         self.progressDialog.setValue(self.i + 1)

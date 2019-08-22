@@ -3,10 +3,10 @@ import os
 import threading
 import time
 
-from config import PACKAGE_NAME
-from config import TMP_IMG_DIR
-from config import IOS_PERCENT
-from config import STAGE
+from app_config.config import PACKAGE_NAME
+from app_config.config import TMP_IMG_DIR
+from app_config.config import IOS_PERCENT
+from app_config.config import STAGE
 
 from google_algorithm.label_image import identify_pic
 

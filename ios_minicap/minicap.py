@@ -5,20 +5,16 @@ import os
 import socket
 import threading
 import shutil
-import time
 import queue
 
-from config import TMP_IMG_DIR
+from app_config.config import TMP_IMG_DIR
 from ios_minicap.banner import Banner
 from datetime import datetime
 
 from multiprocessing import Process
 
-from queue_manager import QueueManager
+from msg_queue.queue_manager import QueueManager
 
-from config import JSON_MINICAP_KEY
-from config import JSON_PROGRESS_BAR_KEY
-from config import JSON_TEXT_BROWSER_KEY
 
 class MinicapStream(object):
     __instance = None

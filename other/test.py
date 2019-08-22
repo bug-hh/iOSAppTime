@@ -4,7 +4,7 @@ import json
 import os
 import requests
 from optparse import OptionParser
-from config import APK_PATH
+from app_config.config import APK_PATH
 from other.ios_tester import IOSTester
 
 

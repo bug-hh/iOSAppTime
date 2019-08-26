@@ -179,6 +179,7 @@ class CalTime(object):
         summary = "总共包含 %d 张图片" % (length)
         print(summary)
         msg = {}
+        self.cache.clear()
         for stage in SORTED_STAGE:
             if stage in exclude_list:
                 continue

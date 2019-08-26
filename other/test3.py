@@ -85,7 +85,7 @@ if __name__ == '__main__':
     #             pass
     #     except subprocess.TimeoutExpired:
     #         pass
-    h = Hoo()
-    for k in h.dt:
-        print(h.dt[k])
+    cmd = "instrument -s devices"
+    fobj = os.popen(cmd)
+
 

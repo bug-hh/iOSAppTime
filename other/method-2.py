@@ -155,9 +155,6 @@ class Foo(QObject):
         target_precise = int(IOS_PERCENT[target_stage] * 10000)
         pic_path = os.path.join(pic_dir, pic_list[pic_index])
         id_ret = identify_pic(pic_path)
-        # prob = round(id_ret[1], 3)
-        # prob *= 1000
-        # prob = int(prob)
         direction = -1 if target_stage == 'start' else 1
         length = len(pic_list)
 
@@ -206,10 +203,9 @@ class Foo(QObject):
         length = len(pic_list)
         summary = "总共包含 %d 张图片" % (length)
         print(summary)
+        self.cache.clear()
         for stage in SORTED_STAGE:
             if stage in exclude_list:
-                continue
-            if stage != 'end':
                 continue
             search_method = self.upper_bound if stage == 'start' else self.lower_bound
             is_upper_bound = True if stage == 'start' else False
@@ -236,14 +232,11 @@ class Foo(QObject):
         if ret['loading'] != -1:
             launch_time = round((ret['loading'][0] - ret['start'][0]), 4)
 
-        if ret['words'] != -1:
-            home_page_loading_time = round((ret['words'][0] - ret['loading'][0]), 4)
-
         if ret['end'] != -1:
-            home_page_loading_time_2 = round((ret['end'][0] - ret['loading'][0]), 4)
+            home_page_loading_time = round((ret['end'][0] - ret['loading'][0]), 4)
 
         # self.result_queue.put((launch_time, home_page_loading_time))
-        str2 = "App 启动时长：%.3fs   App 首页加载时长：%.3fs(loading->words)     %.3fs(loading->end)" % (launch_time, home_page_loading_time, home_page_loading_time_2)
+        str2 = "App 启动时长：%.3fs   App 首页加载时长：%.3fs(loading->end)" % (launch_time, home_page_loading_time)
 
         for k in ret:
             print(k, ret[k])
@@ -299,35 +292,33 @@ class Foo(QObject):
 
 
 if __name__ == '__main__':
-    # f = Foo()
-    # ios_dir = os.path.join(TMP_IMG_DIR, "iOS")
-    # pic_dir_list = os.listdir(ios_dir)
-    # pic_dir_list.sort()
-    # for pic_dir in pic_dir_list:
-    #     if pic_dir.startswith("."):
-    #         continue
-    #     if pic_dir != '8':
-    #         continue
-    #     print(pic_dir)
-    #     pic_dir_path = os.path.join(ios_dir, pic_dir)
-    #     f.cal_time(pic_dir_path, config.EXCLUDED_LIST)
-    #     print("################")
-    #     print()
-    # start = f.get_create_time("2019-08-16_17-49-30-716272")
-    # loading = f.get_create_time("2019-08-16_17-49-33-859590")
-    # end = f.get_create_time("2019-08-16_17-49-34-890767")
+    f = Foo()
+    ios_dir = os.path.join(TMP_IMG_DIR, "iOS")
+    pic_dir_list = os.listdir(ios_dir)
+    pic_dir_list.sort()
+    for pic_dir in pic_dir_list:
+        if pic_dir.startswith("."):
+            continue
+        print(pic_dir)
+        pic_dir_path = os.path.join(ios_dir, pic_dir)
+        f.cal_time(pic_dir_path, config.EXCLUDED_LIST)
+        print("################")
+        print()
+    # start = f.get_create_time("2019-08-16_17-59-37-988644")
+    # loading = f.get_create_time("2019-08-16_17-59-40-618910")
+    # end = f.get_create_time("2019-08-16_17-59-41-518037")
     #
     # print("start -> loading: ", loading - start)
     # print("loading -> end: ", end - loading)
-    pic_dir = "/Users/bughh/PycharmProjects/iOSAppTime/capture/tmp_pic/iOS"
-    id_dir = "8"
-    temp = os.path.join(pic_dir, id_dir)
-    print(os.path.basename(temp))
-    pic_name = "2019-08-16_17-59-41-518037.jpg"
-    pic_path = os.path.join(pic_dir, id_dir, pic_name)
-    # t1 = time.time()
-    ret = identify_pic(pic_path)
-    print(ret)
+    # pic_dir = "/Users/bughh/PycharmProjects/iOSAppTime/capture/tmp_pic/iOS"
+    # id_dir = "8"
+    # temp = os.path.join(pic_dir, id_dir)
+    # print(os.path.basename(temp))
+    # pic_name = "2019-08-16_17-59-41-518037.jpg"
+    # pic_path = os.path.join(pic_dir, id_dir, pic_name)
+    # # t1 = time.time()
+    # ret = identify_pic(pic_path)
+    # print(ret)
     # t2 = time.time()
     # print(t2 - t1)
     # f = Foo()

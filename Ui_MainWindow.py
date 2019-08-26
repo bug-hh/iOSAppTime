@@ -300,6 +300,7 @@ class Ui_MainWindow(QtCore.QObject):
         screenshots_dir = os.path.join(TMP_IMG_DIR, "iOS")
         ls = os.listdir(screenshots_dir)
         times_list = [ name for name in ls if not name.startswith(".") ]
+        times_list.sort()
         i = 0
         flag_1 = False
         flag_2 = False
@@ -347,6 +348,9 @@ class Ui_MainWindow(QtCore.QObject):
                 count += 1
             except queue.Empty:
                 break
+
+        if self.cal_progress_dialog:
+            self.cal_progress_dialog.close()
 
         msg = {}
         str_aver = "平均启动时长：%.3f  平均加载时长: %.3f" %(aver_launch_time / count if count != 0 else 0, aver_home_page_loading_time / count if count != 0 else 0)

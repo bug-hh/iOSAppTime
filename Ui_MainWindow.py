@@ -87,26 +87,50 @@ class Ui_MainWindow(QtCore.QObject):
         self.textBrowser = QtWidgets.QTextBrowser(self.centralwidget)
         self.textBrowser.setGeometry(QtCore.QRect(10, 10, 601, 471))
         self.textBrowser.setObjectName("textBrowser")
+
         self.horizontalLayoutWidget = QtWidgets.QWidget(self.centralwidget)
-        self.horizontalLayoutWidget.setGeometry(QtCore.QRect(10, 479, 601, 71))
+        self.horizontalLayoutWidget.setGeometry(QtCore.QRect(10, 479, 601, 74))
         self.horizontalLayoutWidget.setObjectName("horizontalLayoutWidget")
         self.horizontalLayout = QtWidgets.QHBoxLayout(self.horizontalLayoutWidget)
         self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.platform_label_text = QtWidgets.QLabel(self.horizontalLayoutWidget)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.platform_label_text.sizePolicy().hasHeightForWidth())
+        self.platform_label_text.setSizePolicy(sizePolicy)
+        self.platform_label_text.setAlignment(QtCore.Qt.AlignCenter)
         self.platform_label_text.setObjectName("platform_label_text")
         self.horizontalLayout.addWidget(self.platform_label_text)
         self.platform_label = QtWidgets.QLabel(self.horizontalLayoutWidget)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        sizePolicy.setHorizontalStretch(1)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.platform_label.sizePolicy().hasHeightForWidth())
+        self.platform_label.setSizePolicy(sizePolicy)
         self.platform_label.setText("")
+        self.platform_label.setAlignment(QtCore.Qt.AlignCenter)
         self.platform_label.setObjectName("platform_label")
         self.horizontalLayout.addWidget(self.platform_label)
         self.app_name_label_text = QtWidgets.QLabel(self.horizontalLayoutWidget)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        sizePolicy.setHorizontalStretch(1)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.app_name_label_text.sizePolicy().hasHeightForWidth())
+        self.app_name_label_text.setSizePolicy(sizePolicy)
+        self.app_name_label_text.setAlignment(QtCore.Qt.AlignCenter)
         self.app_name_label_text.setObjectName("app_name_label_text")
         self.horizontalLayout.addWidget(self.app_name_label_text)
-        self.app_name_label = QtWidgets.QLabel(self.horizontalLayoutWidget)
-        self.app_name_label.setText("")
-        self.app_name_label.setObjectName("app_name_label")
-        self.horizontalLayout.addWidget(self.app_name_label)
+        self.comboBox = QtWidgets.QComboBox(self.horizontalLayoutWidget)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(2)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.comboBox.sizePolicy().hasHeightForWidth())
+        self.comboBox.setSizePolicy(sizePolicy)
+        self.comboBox.setObjectName("comboBox")
+        self.horizontalLayout.addWidget(self.comboBox)
+
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 22))
@@ -136,6 +160,10 @@ class Ui_MainWindow(QtCore.QObject):
 
         self.actionAdd_model_file.triggered.connect(self.on_click_set_model_action)
         self.actionSet_training_pictures.triggered.connect(self.on_click_set_pic_action)
+
+        self.ios_version_flag = False
+        self.app_version_flag = False
+
 
         self.CLOCK = QTimer()
         self.CLOCK.setInterval(500)
@@ -199,6 +227,11 @@ class Ui_MainWindow(QtCore.QObject):
         data_pid = ""
         while True:
             try:
+                if not self.ios_version_flag:
+                    self.platform_label.setText(self.query_ios_version())
+
+                if not self.app_version_flag:
+                    self.comboBox.addItems(self.query_app_info())
                 ui_data = self.shared_ui_msg_queue.get_nowait()
                 msg = json.loads(ui_data)
                 for key in msg:
@@ -524,3 +557,28 @@ class Ui_MainWindow(QtCore.QObject):
         status = status_list[-1]
         pid = status_list[1]
         return status == "(LISTEN)", pid
+
+    def query_ios_version(self):
+        cmd = "instruments -s devices | grep -v -i simulator | grep -i null"
+        fobj = os.popen(cmd)
+        query_result = False if len(fobj.read()) == 0 else True
+        if not query_result:
+            cmd = "instruments -s devices | grep -v -i simulator | grep -i iphone"
+            fobj = os.popen(cmd)
+            for line in fobj:
+                ls = line.strip().split()
+                self.ios_version_flag = True
+                return "iOS %s" % ls[1]
+        else:
+            return "请先信任 iPhone 所连接的电脑"
+
+    def query_app_info(self):
+        '''
+        查询所有安装的 app （系统 app 除外），然后生成一个列表，让用户选择对应的 app
+        :return:
+        '''
+        cmd = "ideviceinstaller -l -o list_user"
+        fobj = os.popen(cmd)
+        ls = [line.strip() for line in fobj if not line.strip().lower().startswith("total")]
+        self.app_version_flag = True if len(ls) > 0 else False
+        return ls

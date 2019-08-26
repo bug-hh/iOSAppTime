@@ -63,6 +63,28 @@ def g():
         time.sleep(2)
     return "g"
 
+def query_ios_device():
+    cmd = "instruments -s devices | grep -v -i simulator | grep -i null"
+    fobj = os.popen(cmd)
+    query_result = False if len(fobj.read()) == 0 else True
+    if not query_result:
+        cmd = "instruments -s devices | grep -v -i simulator | grep -i iphone"
+        fobj = os.popen(cmd)
+        for line in fobj:
+            ls = line.strip().split()
+            return "系统版本：iOS %s" % ls[1]
+    else:
+        return "请先信任 iPhone 所连接的电脑"
+
+def query_app_info():
+    '''
+    查询所有安装的 app （系统 app 除外），然后生成一个列表，让用户选择对应的 app
+    :return:
+    '''
+    cmd = "ideviceinstaller -l -o list_user"
+    fobj = os.popen(cmd)
+    ls = [line.strip() for line in fobj if not line.strip().lower().startswith("total")]
+    return ls
 
 if __name__ == '__main__':
     # from app_config.config import ABOUT_TRAINING, TEST_APP, IOS_MODEL_NAME, IOS_LABEL_NAME, RETRAIN_PATH
@@ -85,7 +107,7 @@ if __name__ == '__main__':
     #             pass
     #     except subprocess.TimeoutExpired:
     #         pass
-    cmd = "instrument -s devices"
-    fobj = os.popen(cmd)
-
+    ret = query_app_info()
+    for line in ret:
+        print(line)
 

@@ -22,12 +22,12 @@ class Ui_ProgressDialog(object):
         self.verticalLayout.setObjectName("verticalLayout")
         self.progress_bar_dt = {}
 
-        for k in task_dt.values():
+        for k in task_dt:
             progressBar = QtWidgets.QProgressBar(self.verticalLayoutWidget)
             progressBar.setProperty("value", 0)
             progressBar.setObjectName("progressBar")
-            self.progress_bar_dt[k] = progressBar
-            self.progress_bar_dt[k].setMaximum(200)
+            self.progress_bar_dt[k] = progressBar   # 每个 capture/tmp_pic/iOS 文件夹对应一个进度条
+            self.progress_bar_dt[k].setMaximum(task_dt[k])
             self.verticalLayout.addWidget(progressBar)
 
         self.retranslateUi(ProgressDialog)

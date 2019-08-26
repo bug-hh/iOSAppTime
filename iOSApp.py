@@ -43,8 +43,4 @@ def main():
 if __name__ == '__main__':
     main()
 
-# todo 用 2 debug 一下搜索算法
-# todo textBrowser 要改
-# todo 进程已经结束了，还在打印
-# todo 打印的信息是纵向的，应该是横向的
 # todo 截图时，等待 minicap 的时间 5s 久了一点，导致截了很多张没用的图

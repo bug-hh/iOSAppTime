@@ -57,6 +57,8 @@ class Ui_MainWindow(QtCore.QObject):
         self.signal_training_progress.connect(self.update_text_browser)
 
     def setupUi(self, MainWindow):
+        self.DEBUG = True
+
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(800, 600)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
@@ -165,14 +167,18 @@ class Ui_MainWindow(QtCore.QObject):
         self.shared_answer_queue = self.manager.get_answer_queue()
         self.shared_task_status_dt = self.manager.get_task_status()
 
-        self.start_screenshot_button.setEnabled(False)
-        self.stop_screenshot_button.setEnabled(False)
-        self.cal_button.setEnabled(False)
+        if self.DEBUG:
+            self.start_screenshot_button.setEnabled(False)
+            self.stop_screenshot_button.setEnabled(False)
+            self.cal_button.setEnabled(True)
+            self.training_button.setEnabled(False)
 
         self.times = 1
 
         self.fileDialog = None
-        self.fn_index_dt = {}
+
+        # key 代表 capture/tmp_pic/iOS 下的某个文件夹名，value 表示这个计算这个文件夹下图片序列的启动时长的时间复杂度
+        self.search_price_dt = {}
 
         self._setup_msg_box()
         # self._setup_file_dialog("")
@@ -181,8 +187,6 @@ class Ui_MainWindow(QtCore.QObject):
         self.remind_user = True
         self.training_pic_dir = os.path.join(ABOUT_TRAINING, TEST_APP, "iOS_1-50")
         self.model_path = os.path.join(ABOUT_TRAINING, TEST_APP, "model", IOS_MODEL_NAME)
-
-        self.DEBUG = True
 
     def start_update_ui_thread(self):
         self.ui_update_thread = Thread(target=self._update_ui)
@@ -209,6 +213,7 @@ class Ui_MainWindow(QtCore.QObject):
                 if data_progress:
                     self._update_progress(data_progress)
             except queue.Empty:
+                data_browser = None
                 pass
             except ConnectionResetError:
                 print("connection has been reset")
@@ -227,7 +232,6 @@ class Ui_MainWindow(QtCore.QObject):
 
         # counter 表示有多少个计算阶段
         counter = len(SORTED_STAGE) - len(EXCLUDED_LIST)
-        dt = {}
         num = 0
         for t in times_list:
             if t.startswith("."):
@@ -237,15 +241,14 @@ class Ui_MainWindow(QtCore.QObject):
                 pic_dir = os.path.join(screenshots_dir, t)
                 pic_amount = int(os.popen("ls -l %s | wc -l " % pic_dir).read())
                 search_price = int(math.log(pic_amount, 2)) + 1
-                search_price *= counter
-                adjustment_price = 100 * counter
+                search_price *= counter  # 所有阶段「全局查找中，二分查找」的搜索次数总和的最大值
+                adjustment_price = 10 * counter  # 所有阶段 「局部调整中，线性查找」的搜索次数总和的最大值
                 search_price += adjustment_price
-                dt[int(t)] = search_price # todo 调整搜索算法，最后将self.fn_index_dt 改为 dt
-                self.fn_index_dt[t] = num
-                num += 1
+                self.search_price_dt[int(t)] = search_price # todo 调整搜索算法，最后将self.fn_index_dt 改为 dt
 
-        self.cal_progress_dialog = CalProgressDialog(self.fn_index_dt)
+        self.cal_progress_dialog = CalProgressDialog(self.search_price_dt)
         self.qt_signal = QTSignal()
+        # k 表示 capture/tmp_pic/iOS 下的文件夹名，用 k 去找对应的 signal
         for k in self.cal_progress_dialog.ui.progress_bar_dt:
             self.qt_signal.dt_signal[k].connect(self.update_progress_bar)
 
@@ -300,8 +303,8 @@ class Ui_MainWindow(QtCore.QObject):
         i = 0
         flag_1 = False
         flag_2 = False
-        length = len(self.fn_index_dt)
-        progress_bar_index_ls = list(self.fn_index_dt.values())
+        length = len(self.search_price_dt)
+        progress_bar_index_ls = list(self.search_price_dt.keys())
         aver_launch_time = 0
         aver_home_page_loading_time = 0
         count = 0
@@ -346,7 +349,7 @@ class Ui_MainWindow(QtCore.QObject):
                 break
 
         msg = {}
-        str_aver = "平均启动时长：%.3f  平均加载时长: %.3f" %(aver_launch_time, aver_home_page_loading_time)
+        str_aver = "平均启动时长：%.3f  平均加载时长: %.3f" %(aver_launch_time / count if count != 0 else 0, aver_home_page_loading_time / count if count != 0 else 0)
         msg[JSON_TEXT_BROWSER_KEY] = str_aver
         msg[JSON_PID_KEY] = os.getpid()
         self.shared_ui_msg_queue.put(json.dumps(msg))

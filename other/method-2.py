@@ -14,6 +14,9 @@ import time
 import queue
 from app_config import config
 
+cpu_launch_time, cpu_loading_time = 0.0, 0.0
+man_launch_time, man_loading_time = 0.0, 0.0
+ccount = 0
 
 class Foo(QObject):
     dt_signal = {}
@@ -222,6 +225,8 @@ class Foo(QObject):
                 pic_path = os.path.join(pic_dir, pic_list[index])
                 ret[stage] = (self.get_create_time(pic_list[index]), pic_path, search_result[1])
 
+        global ccount
+        ccount += 1
         print(ret)
         print()
 
@@ -261,6 +266,18 @@ class Foo(QObject):
         sss = "App 启动时长：%.3fs  App 首页加载时长：%.3fs(loading -> end)" \
             % (human_value_list[0], human_value_list[1])
         print(sss)
+
+        global cpu_launch_time, cpu_loading_time, man_launch_time, man_loading_time
+        cpu_launch_time += (int(launch_time * 10**3))
+        cpu_loading_time += (int(home_page_loading_time * 10**3))
+
+        man_launch_time += (int(human_value_list[0] * 10**3))
+        man_loading_time += (int(human_value_list[1] * 10**3))
+
+        print("######计算时长对比#######")
+        diff_1 = abs(int(launch_time * 10**3) - int(human_value_list[0] * 10**3))
+        diff_2 = abs(int(home_page_loading_time * 10**3) - int(human_value_list[1] * 10**3))
+        print("启动时长误差：%d ms   首页加载时长误差：%d ms" % (diff_1, diff_2))
 
     def get_create_time(self, filename):
         fn, ext = os.path.splitext(filename)
@@ -304,6 +321,14 @@ if __name__ == '__main__':
         f.cal_time(pic_dir_path, config.EXCLUDED_LIST)
         print("################")
         print()
+
+    cpu_launch_time = cpu_launch_time // ccount if ccount != 0 else 0
+    cpu_loading_time = cpu_loading_time // ccount if ccount != 0 else 0
+
+    man_launch_time = man_launch_time // ccount if ccount != 0 else 0
+    man_loading_time = man_loading_time // ccount if ccount != 0 else 0
+
+    print("平均启动时长误差：%d ms    平均首页加载时长误差: %d ms" % (abs(cpu_launch_time - man_launch_time), abs(cpu_loading_time - man_loading_time)))
     # start = f.get_create_time("2019-08-16_17-59-37-988644")
     # loading = f.get_create_time("2019-08-16_17-59-40-618910")
     # end = f.get_create_time("2019-08-16_17-59-41-518037")

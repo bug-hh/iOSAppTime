@@ -37,10 +37,12 @@ class Ui_MainWindow(object):
         self.training_button = QtWidgets.QPushButton(self.verticalLayoutWidget)
         self.training_button.setObjectName("training_button")
         self.verticalLayout.addWidget(self.training_button)
+        self.platformComboBox = QtWidgets.QComboBox(self.verticalLayoutWidget)
+        self.platformComboBox.setObjectName("platformComboBox")
+        self.verticalLayout.addWidget(self.platformComboBox)
         self.textBrowser = QtWidgets.QTextBrowser(self.centralwidget)
         self.textBrowser.setGeometry(QtCore.QRect(10, 10, 601, 471))
         self.textBrowser.setObjectName("textBrowser")
-
         self.horizontalLayoutWidget = QtWidgets.QWidget(self.centralwidget)
         self.horizontalLayoutWidget.setGeometry(QtCore.QRect(10, 479, 601, 74))
         self.horizontalLayoutWidget.setObjectName("horizontalLayoutWidget")
@@ -83,7 +85,6 @@ class Ui_MainWindow(object):
         self.comboBox.setSizePolicy(sizePolicy)
         self.comboBox.setObjectName("comboBox")
         self.horizontalLayout.addWidget(self.comboBox)
-
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 22))

@@ -59,6 +59,9 @@
        </property>
       </widget>
      </item>
+     <item>
+      <widget class="QComboBox" name="platformComboBox"/>
+     </item>
     </layout>
    </widget>
    <widget class="QTextBrowser" name="textBrowser">

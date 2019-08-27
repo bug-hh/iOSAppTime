@@ -23,7 +23,7 @@ if not os.path.exists(ABOUT_TRAINING):
 
 STAGE = ['start', 'newlogo', 'ad', 'loading', 'words', 'end', 'home']
 ANDROID_PERCENT = {'start': 0.90, 'oldlogo': 0.90, 'newlogo': 0.90, 'ad': 0.55, 'loading': 0.60, 'words': 0.90, 'end': 0.9}
-IOS_PERCENT = {'start': 0.96, 'oldlogo': 0.90, 'newlogo': 0.90, 'ad': 0.90, 'loading': 0.95, 'words': 0.85, 'end': 0.85, 'home': 0.90}
+IOS_PERCENT = {'start': 0.96, 'oldlogo': 0.90, 'newlogo': 0.90, 'ad': 0.90, 'loading': 0.96, 'words': 0.85, 'end': 0.85, 'home': 0.90}
 SORTED_STAGE = {'start':1, 'newlogo':2, 'ad':3, 'loading':4, 'end':5}
 EXCLUDED_LIST = ['start', 'ad']
 JSON_MINICAP_KEY = 'MINICAP'

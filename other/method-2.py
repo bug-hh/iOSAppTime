@@ -329,10 +329,10 @@ if __name__ == '__main__':
     man_loading_time = man_loading_time // ccount if ccount != 0 else 0
 
     print("平均启动时长误差：%d ms    平均首页加载时长误差: %d ms" % (abs(cpu_launch_time - man_launch_time), abs(cpu_loading_time - man_loading_time)))
-    # start = f.get_create_time("2019-08-16_17-59-37-988644")
-    # loading = f.get_create_time("2019-08-16_17-59-40-618910")
-    # end = f.get_create_time("2019-08-16_17-59-41-518037")
-    #
+    # start = f.get_create_time("2019-08-16_17-47-15-792374")
+    # loading = f.get_create_time("2019-08-16_17-47-18-528193")
+    # end = f.get_create_time("2019-08-16_17-47-19-860089")
+
     # print("start -> loading: ", loading - start)
     # print("loading -> end: ", end - loading)
     # pic_dir = "/Users/bughh/PycharmProjects/iOSAppTime/capture/tmp_pic/iOS"

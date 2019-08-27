@@ -66,6 +66,8 @@ class CalTime(object):
                         return length
                     else:
                         mid_index += 1
+            if mid[0] == 'ad':
+                return -1
             msg[JSON_PROGRESS_BAR_KEY] = (self.times_counter, self.progress)
             self.shared_ui_msg_queue.put(json.dumps(msg))
             if SORTED_STAGE[mid[0]] <= value:
@@ -99,6 +101,9 @@ class CalTime(object):
                         return length
                     else:
                         mid_index += 1
+            # 如果有广告，则直接丢弃该批截图序列
+            if mid[0] == 'ad':
+                return -1
             msg[JSON_PROGRESS_BAR_KEY] = (self.times_counter, self.progress)
             self.shared_ui_msg_queue.put(json.dumps(msg))
             if SORTED_STAGE[mid[0]] < value:
@@ -187,6 +192,14 @@ class CalTime(object):
             is_upper_bound = True if stage == 'start' else False
             self.progress = 0
             bound_index = search_method(pic_dir, pic_list, 0, length, SORTED_STAGE[stage], stage)
+            if bound_index == -1:
+                ad_str = '该文件夹的截图中含有广告，丢弃这批截图序列'
+                print(ad_str)
+                msg[JSON_TEXT_BROWSER_KEY] = tuple(ad_str)
+                msg[JSON_PID_KEY] = self.PID
+                self.shared_ui_msg_queue.put(json.dumps(msg))
+                self.shared_task_status_dt.update({self.PID: True})
+                return
             if stage == 'newlogo':
                 stage = 'start'
             search_result = self._check_precise(bound_index, pic_list, pic_dir, is_upper_bound, stage)

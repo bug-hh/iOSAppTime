@@ -174,11 +174,24 @@ class Foo(QObject):
         prob *= 10000
         prob = int(prob)
         last = None
+
+        # 先找出 prob >= target_precise
         while prob < target_precise and pic_index < length:
             y += 1
             pic_index += direction
             pic_path = os.path.join(pic_dir, pic_list[pic_index])
+            id_ret = identify_pic(pic_path)
+            prob = round(id_ret[1], 4)
+            prob *= 10000
+            prob = int(prob)
+
+        # 再向前或者向后找 abs(prob - target_precise) <= 1 的图片
+
+        while abs(prob - target_precise) <= 1:
+            y += 1
             last = id_ret
+            pic_index += direction
+            pic_path = os.path.join(pic_dir, pic_list[pic_index])
             id_ret = identify_pic(pic_path)
             prob = round(id_ret[1], 4)
             prob *= 10000
@@ -189,7 +202,7 @@ class Foo(QObject):
         # if id_ret[0] != target_stage:
         #     return pic_index - direction, last
         # else:
-        return pic_index, id_ret
+        return pic_index, id_ret if last is None else pic_index - 1, last
 
     def cal_time(self, pic_dir, exclude_list):
         cur = time.time()
@@ -335,14 +348,14 @@ if __name__ == '__main__':
 
     # print("start -> loading: ", loading - start)
     # print("loading -> end: ", end - loading)
-    # pic_dir = "/Users/bughh/PycharmProjects/iOSAppTime/capture/tmp_pic/iOS"
-    # id_dir = "8"
-    # temp = os.path.join(pic_dir, id_dir)
+    pic_dir = "/Users/bughh/PycharmProjects/iOSAppTime/capture/tmp_pic/iOS"
+    id_dir = "8"
+    temp = os.path.join(pic_dir, id_dir)
     # print(os.path.basename(temp))
-    # pic_name = "2019-08-16_17-59-41-518037.jpg"
-    # pic_path = os.path.join(pic_dir, id_dir, pic_name)
+    pic_name = "2019-08-16_17-59-41-518037.jpg"
+    pic_path = os.path.join(pic_dir, id_dir, pic_name)
     # # t1 = time.time()
-    # ret = identify_pic(pic_path)
+    ret = identify_pic(pic_path)
     # print(ret)
     # t2 = time.time()
     # print(t2 - t1)

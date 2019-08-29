@@ -7,8 +7,9 @@ ACTIVITY_PATH = '.app.ui.activity.LauncherActivity'
 ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 RETRAIN_PATH = os.path.join(ROOT_PATH, "google_algorithm", "retrain.py")
 APK_PATH = os.path.join(ROOT_PATH, 'app', 'zhihu_v6_4_0.apk')
-TMP_IMG_DIR = os.path.join(ROOT_PATH, 'capture', 'tmp_pic')
-# TMP_IMG_DIR = os.path.join(os.path.dirname(__file__), 'capture2', 'tmp_pic2')
+# TMP_IMG_DIR = os.path.join(ROOT_PATH, 'capture', 'tmp_pic')
+# TMP_IMG_DIR = os.path.join(ROOT_PATH, 'capture_baidu', 'tmp_pic_baidu')
+TMP_IMG_DIR = os.path.join(ROOT_PATH, 'capture_top_today', 'tmp_pic_top_today')
 
 IOS_MODEL_NAME = "ios_zhihu_output_graph.pb"
 IOS_LABEL_NAME = "ios_zhihu_output_labels.txt"

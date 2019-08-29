@@ -166,7 +166,7 @@ class Ui_MainWindow(QtCore.QObject):
 
 
         self.CLOCK = QTimer()
-        self.CLOCK.setInterval(500)
+        self.CLOCK.setInterval(1000)
         self.CLOCK.timeout.connect(self._count_down)
 
         self.TRAINING_CLOCK = QTimer()
@@ -174,7 +174,7 @@ class Ui_MainWindow(QtCore.QObject):
         self.TRAINING_CLOCK.timeout.connect(self._training_count_down)
 
         self.i = 0
-        self.percent = 20
+
 
         self.queue = Queue()
         self.ui_msg_queue = Queue()
@@ -215,6 +215,8 @@ class Ui_MainWindow(QtCore.QObject):
         self.remind_user = True
         self.training_pic_dir = os.path.join(ABOUT_TRAINING, TEST_APP, "iOS_1-50")
         self.model_path = os.path.join(ABOUT_TRAINING, TEST_APP, "model", IOS_MODEL_NAME)
+        self.WAIT_TIME = 4 # SECONDS
+        self.percent = 100 // self.WAIT_TIME
 
     def start_update_ui_thread(self):
         self.ui_update_thread = Thread(target=self._update_ui)
@@ -312,7 +314,7 @@ class Ui_MainWindow(QtCore.QObject):
         self.minicap.run()
         self.shared_queue.put(self.times)
         self.textBrowser.append("第 %d 次截图开始" % self.times)
-        self.textBrowser.append("请等待 5 s，再点击 app 截图")
+        self.textBrowser.append("请等待 %d s，再点击 app 截图" % self.WAIT_TIME)
 
         self.times += 1
 
@@ -445,9 +447,9 @@ class Ui_MainWindow(QtCore.QObject):
     def on_click_minicap_button(self):
         # 首先查询 ios-minicap 的状态，如果状态不是 listen，则重新启动
         self._checkout_ios_minicap()
-        self.textBrowser.append("正在启动 ios-minicap，请等待 5 s，再开始操作")
-        # 添加一个 dialog，倒数 5s,倒数 5s 后，显示启动成功
-        self._startup_progress_dialog("Waiting for ios-minicap", 5, True, self.CLOCK)
+        self.textBrowser.append("正在启动 ios-minicap，请等待 %d s，再开始操作" % self.WAIT_TIME)
+        # 添加一个 dialog，倒数 self.WAIT_TIME s,倒数 self.WAIT_TIME s 后，显示启动成功
+        self._startup_progress_dialog("Waiting for ios-minicap", self.WAIT_TIME, True, self.CLOCK)
         self.start_screenshot_button.setEnabled(True)
         self.stop_screenshot_button.setEnabled(True)
 
@@ -460,8 +462,8 @@ class Ui_MainWindow(QtCore.QObject):
         # 当点击一次启动截图后，就将启动截图按钮禁用，直到停止截图按钮被按下
         # 首先查询 ios-minicap 的状态，如果状态不是 listen，则重新启动
         self._checkout_ios_minicap()
+        self._startup_progress_dialog("Waiting for ios-minicap", self.WAIT_TIME, True, self.CLOCK)
         self._start_screenshot_process()
-        self._startup_progress_dialog("Waiting for ios-minicap", 5, True, self.CLOCK)
         self.start_screenshot_button.setEnabled(False)
 
     def on_click_stop_screenshot_button(self):
@@ -538,12 +540,12 @@ class Ui_MainWindow(QtCore.QObject):
     def _count_down(self):
         self.progressDialog.setValue(self.i + 1)
         self.progressDialog.setLabelText("Waiting for ios-minicap: %d%%" % (self.percent))
-        self.percent += 20
+        self.percent += (100 // self.WAIT_TIME)
         self.i += 1
-        if self.i == 5:
+        if self.i == self.WAIT_TIME:
             self.CLOCK.stop()
             self.i = 0
-            self.percent = 20
+            self.percent = 100 // self.WAIT_TIME
 
     @staticmethod
     def query_service(port):
@@ -579,6 +581,6 @@ class Ui_MainWindow(QtCore.QObject):
         '''
         cmd = "ideviceinstaller -l -o list_user"
         fobj = os.popen(cmd)
-        ls = [line.strip() for line in fobj if not line.strip().lower().startswith("total")]
+        ls = [line.strip().split("-")[1] for line in fobj if not line.strip().lower().startswith("total")]
         self.app_version_flag = True if len(ls) > 0 else False
         return ls

@@ -32,6 +32,8 @@ capture/
 capture2/
 capture_baidu/
 capture_top_today/
+capture_weibo/
+capture_zhihu/
 
 # app
 app/

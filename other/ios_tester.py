@@ -5,8 +5,8 @@ import time
 
 from app_config.config import PACKAGE_NAME
 from app_config.config import TMP_IMG_DIR
-from app_config.config import IOS_PERCENT
-from app_config.config import STAGE
+from app_config.config import ZHIHU_PERCENT
+from app_config.config import ZHIHU_STAGE
 
 from google_algorithm.label_image import identify_pic
 
@@ -49,10 +49,10 @@ class IOSTester(object):
         print('开始识别第 %s 次启动图片' % times)
         stage_time = [{'start': start_time}]
         ret = {}
-        for st in STAGE:
+        for st in ZHIHU_STAGE:
             ret[st] = -1
         ret['start'] = start_time
-        percent = IOS_PERCENT
+        percent = ZHIHU_PERCENT
 
         # 遍历截图，flag 记录当前识别阶段
         dir_path = os.path.join(TMP_IMG_DIR, str(times))  # 文件夹路径

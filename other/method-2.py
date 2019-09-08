@@ -40,17 +40,6 @@ ccount = 0
 class Foo(QObject):
     dt_signal = {}
 
-    signal_0 = pyqtSignal(int)
-    signal_1 = pyqtSignal(int)
-    signal_2 = pyqtSignal(int)
-    signal_3 = pyqtSignal(int)
-    signal_4 = pyqtSignal(int)
-    signal_5 = pyqtSignal(int)
-    signal_6 = pyqtSignal(int)
-    signal_7 = pyqtSignal(int)
-    signal_8 = pyqtSignal(int)
-    signal_9 = pyqtSignal(int)
-
     def __init__(self, test_app_code):
         super(Foo, self).__init__()
         for k in Foo.__dict__:
@@ -61,6 +50,11 @@ class Foo(QObject):
                 exec(cmd)
         self.cache = {}
         self.classifier = Classifier(test_app_code)
+
+        self.start_exist = False
+        self.loading_exist = False
+        self.end_exist = False
+
         # QueueManager.register('get_queue_1')
         # QueueManager.register('get_queue_2')
         # self.manager = QueueManager(address=('localhost', 55677), authkey=b'1234')
@@ -250,7 +244,7 @@ class Foo(QObject):
         ret = {}
         counter = 0
         for st in ZHIHU_STAGE:
-            ret[st] = -1
+            ret[st] = (-1, None, None)
 
         ls = os.listdir(pic_dir)
         pic_list = [pic for pic in ls if not pic.startswith(".")]
@@ -272,8 +266,7 @@ class Foo(QObject):
                 stage = 'start'
             search_result = self._check_precise(bound_index, pic_list, pic_dir, is_upper_bound, stage)
             if not self._check_result(is_upper_bound, search_result, length):
-                print("%s 阶段不存在，线程退出" % stage)
-                return
+                print("%s 阶段不存在" % stage)
             else:
                 index = search_result[0] - 1 if is_upper_bound else search_result[0]
                 pic_path = os.path.join(pic_dir, pic_list[index])
@@ -284,22 +277,39 @@ class Foo(QObject):
         print(ret)
         print()
 
-        # 计算启动平均时长 和 Task 平均时长
+        if ret['start'][0] != -1:
+            self.start_exist = True
+
+        if ret['loading'][0] != -1:
+            self.loading_exist = True
+
+        if ret['end'][0] != -1:
+            self.end_exist = True
+
+        # 计算启动时长 和 Task 平均时长
         launch_time = 0
         home_page_loading_time = 0
-        home_page_loading_time_2 = 0
-        if ret['loading'] != -1:
-            launch_time = round((ret['loading'][0] - ret['start'][0]), 4)
+        if self.start_exist:
+            if self.loading_exist:
+                launch_time = round((ret['loading'][0] - ret['start'][0]), 4)
 
-        if ret['end'] != -1:
-            home_page_loading_time = round((ret['end'][0] - ret['loading'][0]), 4)
+            if self.end_exist:
+                if not self.loading_exist:
+                    launch_time = round((ret['end'][0] - ret['start'][0]), 4)
+                    home_page_loading_time = 0
+                else:
+                    home_page_loading_time = round((ret['end'][0] - ret['loading'][0]), 4)
+            else:
+                home_page_loading_time = 0
+        else:
+            launch_time = 0
+            home_page_loading_time = 0
 
         # self.result_queue.put((launch_time, home_page_loading_time))
-        str2 = "App 启动时长：%.3fs   App 首页加载时长：%.3fs(loading->end)" % (launch_time, home_page_loading_time)
+        str2 = "App 启动时长：%.3fs   App 首页加载时长：%.3fs" % (launch_time, home_page_loading_time)
 
         for k in ret:
             print(k, ret[k])
-
 
         print(str2)
         now = time.time()

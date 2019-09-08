@@ -7,7 +7,6 @@ import threading
 import shutil
 import queue
 
-from app_config.config import TMP_IMG_DIR
 from ios_minicap.banner import Banner
 from datetime import datetime
 
@@ -15,12 +14,16 @@ from multiprocessing import Process
 
 from msg_queue.queue_manager import QueueManager
 
+from app_config.config import TMP_IMG_ZHIHU_DIR
+from app_config.config import TMP_IMG_TOP_TODAY_DIR
+from app_config.config import TMP_IMG_BAIDU_DIR
+from app_config.config import TMP_IMG_WEIBO_DIR
 
 class MinicapStream(object):
     __instance = None
     __mutex = threading.Lock()
 
-    def __init__(self, port):
+    def __init__(self, port, test_app_code):
         self.ip = "127.0.0.1"  # 定义IP
         self.port = port  # 监听的端口
         self.pid = 0  # 进程ID
@@ -42,6 +45,21 @@ class MinicapStream(object):
         self.running = False
         self.times = 0
         self.image_path = ""
+        self.test_app_code = test_app_code
+
+        # 1 知乎 2 微博 3 头条 4 百度
+        if self.test_app_code == 1:
+            self.test_app_name = "zhihu"
+            self.TMP_PIC_DIR = TMP_IMG_ZHIHU_DIR
+        elif self.test_app_code == 2:
+            self.test_app_name = "weibo"
+            self.TMP_PIC_DIR = TMP_IMG_WEIBO_DIR
+        elif self.test_app_code == 3:
+            self.test_app_name = "top_today"
+            self.TMP_PIC_DIR = TMP_IMG_TOP_TODAY_DIR
+        elif self.test_app_code == 4:
+            self.test_app_name = "baidu"
+            self.TMP_PIC_DIR = TMP_IMG_BAIDU_DIR
 
 
     @staticmethod
@@ -70,7 +88,7 @@ class MinicapStream(object):
             return 0
 
     def _create_picture_dir(self):
-        self.image_path = os.path.join(TMP_IMG_DIR, self.platform, str(self.times))
+        self.image_path = os.path.join(self.TMP_PIC_DIR, self.platform, str(self.times))
 
         if not os.path.exists(self.image_path):
             print('创建文件夹 %s ' % self.image_path)
@@ -98,7 +116,7 @@ class MinicapStream(object):
                 break
 
         self._create_picture_dir()
-        
+
         while True:
             # signal == -1 响应停止截图
             signal = self._get_signal()
@@ -201,9 +219,7 @@ class MinicapStream(object):
         file_name = now.strftime("%Y-%m-%d_%H-%M-%S-%f")
         return file_name + ".jpg"
 
-
-
 if __name__ == '__main__':
-    mini = MinicapStream(TMP_IMG_DIR, 33333, None)
+    mini = MinicapStream(TMP_IMG_ZHIHU_DIR, 33333, None)
     mini.run(15)
     # mini.parse()

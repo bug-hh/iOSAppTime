@@ -5,7 +5,7 @@ import time
 from subprocess import PIPE
 
 from other.app import Android
-from app_config.config import PACKAGE_NAME, ACTIVITY_PATH, TMP_IMG_DIR, ANDROID_PERCENT, STAGE
+from app_config.config import PACKAGE_NAME, ACTIVITY_PATH, TMP_IMG_DIR, ANDROID_PERCENT, ZHIHU_STAGE
 from google_algorithm.label_image import identify_pic
 from record import Record
 
@@ -42,7 +42,7 @@ class AndroidTester(object):
         print('开始识别第 %s 次启动图片' % times)
         stage_time = [{'start': start_time}]
         ret = {}
-        for st in STAGE:
+        for st in ZHIHU_STAGE:
             ret[st] = -1
         ret['start'] = start_time
         percent = ANDROID_PERCENT

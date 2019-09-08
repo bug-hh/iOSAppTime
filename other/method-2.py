@@ -7,8 +7,27 @@ import datetime
 
 from PyQt5.QtCore import QObject, pyqtSignal
 
-from google_algorithm.label_image import identify_pic
-from app_config.config import STAGE, SORTED_STAGE, IOS_PERCENT, TMP_IMG_DIR
+from google_algorithm.label_image import Classifier
+
+from app_config.config import ZHIHU_STAGE
+from app_config.config import JSON_PROGRESS_BAR_KEY
+from app_config.config import JSON_TEXT_BROWSER_KEY
+from app_config.config import JSON_PID_KEY
+
+from app_config.config import TMP_IMG_ZHIHU_DIR
+from app_config.config import TMP_IMG_TOP_TODAY_DIR
+from app_config.config import TMP_IMG_BAIDU_DIR
+from app_config.config import TMP_IMG_WEIBO_DIR
+
+from app_config.config import ZHIHU_PERCENT
+from app_config.config import BAIDU_PERCENT
+from app_config.config import TOP_TODAY_PERCENT
+from app_config.config import WEIBO_PERCENT
+
+from app_config.config import ZHIHU_SORTED_STAGE
+from app_config.config import BAIDU_SORTED_STAGE
+from app_config.config import TOP_TODAY_SORTED_STAGE
+from app_config.config import WEIBO_SORTED_STAGE
 
 import time
 import queue
@@ -32,7 +51,7 @@ class Foo(QObject):
     signal_8 = pyqtSignal(int)
     signal_9 = pyqtSignal(int)
 
-    def __init__(self):
+    def __init__(self, test_app_code):
         super(Foo, self).__init__()
         for k in Foo.__dict__:
             if str(k).startswith("signal"):
@@ -41,12 +60,34 @@ class Foo(QObject):
                 cmd = "self.%s.connect(self.trigger_slot)" % k
                 exec(cmd)
         self.cache = {}
+        self.classifier = Classifier(test_app_code)
         # QueueManager.register('get_queue_1')
         # QueueManager.register('get_queue_2')
         # self.manager = QueueManager(address=('localhost', 55677), authkey=b'1234')
         # self.manager.connect()
         # self.shared_queue_1 = self.manager.get_queue_1()
         # self.shared_queue_2 = self.manager.get_queue_2()
+
+    def _test_app_adapter(self, test_app_code):
+        if test_app_code == 1:
+            self.STAGE_PERCENT = ZHIHU_PERCENT
+            self.SORTED_STAGE = ZHIHU_SORTED_STAGE
+            self.TMP_IMG_DIR = TMP_IMG_ZHIHU_DIR
+
+        elif test_app_code == 2:
+            self.STAGE_PERCENT = TOP_TODAY_PERCENT
+            self.SORTED_STAGE = TOP_TODAY_SORTED_STAGE
+            self.TMP_IMG_DIR = TMP_IMG_TOP_TODAY_DIR
+
+        elif test_app_code == 3:
+            self.STAGE_PERCENT = BAIDU_PERCENT
+            self.SORTED_STAGE = BAIDU_SORTED_STAGE
+            self.TMP_IMG_DIR = TMP_IMG_BAIDU_DIR
+
+        elif test_app_code == 4:
+            self.STAGE_PERCENT = WEIBO_PERCENT
+            self.SORTED_STAGE = WEIBO_SORTED_STAGE
+            self.TMP_IMG_DIR = TMP_IMG_WEIBO_DIR
 
     def test_queue(self):
         str1 = "from test1.shared_queue_1"
@@ -91,7 +132,7 @@ class Foo(QObject):
                     mid = self.cache[mid_index]
                 else:
                     pic_path = os.path.join(pic_dir, pic_list[mid_index])
-                    mid = identify_pic(pic_path)
+                    mid = self.classifier.identify_pic(pic_path)
                     self.cache[mid_index] = mid
                 if mid:
                     break
@@ -101,7 +142,7 @@ class Foo(QObject):
                     else:
                         mid_index += 1
 
-            if SORTED_STAGE[mid[0]] <= value:
+            if self.SORTED_STAGE[mid[0]] <= value:
                 first = mid_index + 1
             else:
                 last = mid_index
@@ -120,7 +161,7 @@ class Foo(QObject):
                     mid = self.cache[mid_index]
                 else:
                     pic_path = os.path.join(pic_dir, pic_list[mid_index])
-                    mid = identify_pic(pic_path)
+                    mid = self.classifier.identify_pic(pic_path)
                     self.cache[mid_index] = mid
                 if mid:
                     break
@@ -129,7 +170,7 @@ class Foo(QObject):
                         return length
                     else:
                         mid_index += 1
-            if SORTED_STAGE[mid[0]] < value:
+            if self.SORTED_STAGE[mid[0]] < value:
                 first = mid_index + 1
             else:
                 last = mid_index
@@ -155,9 +196,9 @@ class Foo(QObject):
         :return:
         '''
         y = 0
-        target_precise = int(IOS_PERCENT[target_stage] * 10000)
+        target_precise = int(ZHIHU_PERCENT[target_stage] * 10000)
         pic_path = os.path.join(pic_dir, pic_list[pic_index])
-        id_ret = identify_pic(pic_path)
+        id_ret = self.classifier.identify_pic(pic_path)
         direction = -1 if target_stage == 'start' else 1
         length = len(pic_list)
 
@@ -165,7 +206,7 @@ class Foo(QObject):
             y += 1
             pic_index += direction
             pic_path = os.path.join(pic_dir, pic_list[pic_index])
-            id_ret = identify_pic(pic_path)
+            id_ret = self.classifier.identify_pic(pic_path)
 
         if target_stage not in ('start', 'loading', 'end'):
             return pic_index, id_ret
@@ -174,12 +215,25 @@ class Foo(QObject):
         prob *= 10000
         prob = int(prob)
         last = None
+
+        # 先找出 prob >= target_precise
         while prob < target_precise and pic_index < length:
             y += 1
             pic_index += direction
             pic_path = os.path.join(pic_dir, pic_list[pic_index])
+            id_ret = self.classifier.identify_pic(pic_path)
+            prob = round(id_ret[1], 4)
+            prob *= 10000
+            prob = int(prob)
+
+        # 再向前或者向后找 abs(prob - target_precise) <= 1 的图片
+
+        while prob >= target_precise:
+            y += 1
             last = id_ret
-            id_ret = identify_pic(pic_path)
+            pic_index += direction
+            pic_path = os.path.join(pic_dir, pic_list[pic_index])
+            id_ret = self.classifier.identify_pic(pic_path)
             prob = round(id_ret[1], 4)
             prob *= 10000
             prob = int(prob)
@@ -189,13 +243,13 @@ class Foo(QObject):
         # if id_ret[0] != target_stage:
         #     return pic_index - direction, last
         # else:
-        return pic_index, id_ret
+        return pic_index, id_ret if last is None else pic_index - 1, last
 
     def cal_time(self, pic_dir, exclude_list):
         cur = time.time()
         ret = {}
         counter = 0
-        for st in STAGE:
+        for st in ZHIHU_STAGE:
             ret[st] = -1
 
         ls = os.listdir(pic_dir)
@@ -207,14 +261,14 @@ class Foo(QObject):
         summary = "总共包含 %d 张图片" % (length)
         print(summary)
         self.cache.clear()
-        for stage in SORTED_STAGE:
+        for stage in self.SORTED_STAGE:
             if stage in exclude_list:
                 continue
             search_method = self.upper_bound if stage == 'start' else self.lower_bound
             is_upper_bound = True if stage == 'start' else False
-            # start 通过 newlogo 来算
-            bound_index = search_method(pic_dir, pic_list, 0, length, SORTED_STAGE[stage], stage)
-            if stage == 'newlogo':
+            # 通过 logo 算 start ，loading、end 阶段通过求 lower_bound 计算
+            bound_index = search_method(pic_dir, pic_list, 0, length, self.SORTED_STAGE[stage], stage)
+            if stage == 'logo':
                 stage = 'start'
             search_result = self._check_precise(bound_index, pic_list, pic_dir, is_upper_bound, stage)
             if not self._check_result(is_upper_bound, search_result, length):
@@ -260,12 +314,12 @@ class Foo(QObject):
             ts = human_value_list[0]
             missing = int(abs(self.get_create_time(ts)*10**6 - ret[k][0]*10**6)/1000)
             sss = "%s: %s 误差：%d ms 概率：%.8f" % (k, human_value_list[0], missing, human_value_list[-1])
-            print(sss)
+            # print(sss)
         d = os.path.basename(pic_dir)
         human_value_list = config.HUMAN[d]['app']
         sss = "App 启动时长：%.3fs  App 首页加载时长：%.3fs(loading -> end)" \
             % (human_value_list[0], human_value_list[1])
-        print(sss)
+        # print(sss)
 
         global cpu_launch_time, cpu_loading_time, man_launch_time, man_loading_time
         cpu_launch_time += (int(launch_time * 10**3))
@@ -274,19 +328,16 @@ class Foo(QObject):
         man_launch_time += (int(human_value_list[0] * 10**3))
         man_loading_time += (int(human_value_list[1] * 10**3))
 
-        print("######计算时长对比#######")
+        # print("######计算时长对比#######")
         diff_1 = abs(int(launch_time * 10**3) - int(human_value_list[0] * 10**3))
         diff_2 = abs(int(home_page_loading_time * 10**3) - int(human_value_list[1] * 10**3))
-        print("启动时长误差：%d ms   首页加载时长误差：%d ms" % (diff_1, diff_2))
+        # print("启动时长误差：%d ms   首页加载时长误差：%d ms" % (diff_1, diff_2))
 
     def get_create_time(self, filename):
         fn, ext = os.path.splitext(filename)
         d = datetime.datetime.strptime(fn, "%Y-%m-%d_%H-%M-%S-%f")
         ts = datetime.datetime.timestamp(d)
         return ts
-
-    def linear(self):
-        pass
 
     def test2(self):
         stage_dir = os.path.join(config.ABOUT_TRAINING, "zhihu", "test2")
@@ -303,51 +354,55 @@ class Foo(QObject):
                 if pic.startswith("."):
                     continue
                 path_pic = os.path.join(path_stage, pic)
-                ret = identify_pic(path_pic)
+                ret = self.classifier.identify_pic(path_pic)
                 print(pic, ret)
             print("------------")
 
 
 if __name__ == '__main__':
-    f = Foo()
-    ios_dir = os.path.join(TMP_IMG_DIR, "iOS")
-    pic_dir_list = os.listdir(ios_dir)
-    pic_dir_list.sort()
-    for pic_dir in pic_dir_list:
-        if pic_dir.startswith("."):
-            continue
-        print(pic_dir)
-        pic_dir_path = os.path.join(ios_dir, pic_dir)
-        f.cal_time(pic_dir_path, config.EXCLUDED_LIST)
-        print("################")
-        print()
-
-    cpu_launch_time = cpu_launch_time // ccount if ccount != 0 else 0
-    cpu_loading_time = cpu_loading_time // ccount if ccount != 0 else 0
-
-    man_launch_time = man_launch_time // ccount if ccount != 0 else 0
-    man_loading_time = man_loading_time // ccount if ccount != 0 else 0
-
-    print("平均启动时长误差：%d ms    平均首页加载时长误差: %d ms" % (abs(cpu_launch_time - man_launch_time), abs(cpu_loading_time - man_loading_time)))
+    # 1 知乎 2 微博 3 头条 4 百度
+    # f = Foo(3)
+    # ios_dir = os.path.join(f.TMP_IMG_DIR, "iOS")
+    # pic_dir_list = os.listdir(ios_dir)
+    # pic_dir_list.sort()
+    # for pic_dir in pic_dir_list:
+    #     if pic_dir.startswith("."):
+    #         continue
+    #     print(pic_dir)
+    #     pic_dir_path = os.path.join(ios_dir, pic_dir)
+    #     f.cal_time(pic_dir_path, config.EXCLUDED_LIST)
+    #     print("################")
+    #     print()
+    #
+    # cpu_launch_time = cpu_launch_time // ccount if ccount != 0 else 0
+    # cpu_loading_time = cpu_loading_time // ccount if ccount != 0 else 0
+    #
+    # man_launch_time = man_launch_time // ccount if ccount != 0 else 0
+    # man_loading_time = man_loading_time // ccount if ccount != 0 else 0
+    #
+    # print("平均启动时长误差：%d ms    平均首页加载时长误差: %d ms" % (abs(cpu_launch_time - man_launch_time), abs(cpu_loading_time - man_loading_time)))
     # start = f.get_create_time("2019-08-16_17-47-15-792374")
     # loading = f.get_create_time("2019-08-16_17-47-18-528193")
     # end = f.get_create_time("2019-08-16_17-47-19-860089")
 
     # print("start -> loading: ", loading - start)
     # print("loading -> end: ", end - loading)
-    # pic_dir = "/Users/bughh/PycharmProjects/iOSAppTime/capture/tmp_pic/iOS"
-    # id_dir = "8"
+
+    pic_dir = "/Users/bughh/PycharmProjects/iOSAppTime/training/weibo/test/"
+    id_dir = "ad"
     # temp = os.path.join(pic_dir, id_dir)
     # print(os.path.basename(temp))
-    # pic_name = "2019-08-16_17-59-41-518037.jpg"
-    # pic_path = os.path.join(pic_dir, id_dir, pic_name)
+    pic_name = "test-ad-3.jpg"
+    pic_path = os.path.join(pic_dir, id_dir, pic_name)
     # # t1 = time.time()
-    # ret = identify_pic(pic_path)
-    # print(ret)
+    classifier = Classifier(2)
+    ret = classifier.identify_pic(pic_path)
+    print(ret)
     # t2 = time.time()
     # print(t2 - t1)
     # f = Foo()
     # f.test2()
+
 
 # todo 1、先用带有 check_precise 跑一次所有的文件夹，其中 check_precise 只包含 「while id_ret[0] != target_stage and pic_index < length」 的情况
 # todo 2、再用带有 check_precise 跑一次所有的文件夹，其中 check_precise 包含 「while id_ret[0] != target_stage and pic_index < length」和 「while prob < target_precise and pic_index < length」的情况

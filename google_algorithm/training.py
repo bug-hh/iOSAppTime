@@ -130,7 +130,7 @@ import tensorflow_hub as hub
 from tensorflow.python import saved_model
 from tensorflow.python.saved_model.signature_def_utils_impl import predict_signature_def
 
-from app_config.config import ABOUT_TRAINING, TEST_APP, IOS_MODEL_NAME, IOS_LABEL_NAME, JSON_TEXT_BROWSER_KEY, JSON_PID_KEY
+from app_config.config import JSON_TEXT_BROWSER_KEY, JSON_PID_KEY
 from msg_queue.queue_manager import QueueManager
 
 FLAGS = None
@@ -161,6 +161,7 @@ def create_image_lists(image_dir, testing_percentage, validation_percentage):
     split into training, testing, and validation sets within each label.
     The order of items defines the class indices.
   """
+  msg = {}
   if not tf.gfile.Exists(image_dir):
     tf.logging.error("Image directory '" + image_dir + "' not found.")
     return None
@@ -182,7 +183,13 @@ def create_image_lists(image_dir, testing_percentage, validation_percentage):
 
     if dir_name == image_dir:
       continue
-    tf.logging.info("Looking for images in '" + dir_name + "'")
+
+    looking_str = "Looking for images in '" + dir_name + "'"
+    msg[JSON_TEXT_BROWSER_KEY] = tuple(looking_str)
+    msg[JSON_PID_KEY] = os.getpid()
+    SHARED_UI_MSG_QUEUE.put(json.dumps(msg))
+    tf.logging.info(looking_str)
+
     for extension in extensions:
       file_glob = os.path.join(image_dir, dir_name, '*.' + extension)
       file_list.extend(tf.gfile.Glob(file_glob))
@@ -461,6 +468,7 @@ def cache_bottlenecks(sess, image_lists, image_dir, bottleneck_dir,
   Returns:
     Nothing.
   """
+  msg = {}
   how_many_bottlenecks = 0
   ensure_dir_exists(bottleneck_dir)
   for label_name, label_lists in list(image_lists.items()):
@@ -474,9 +482,11 @@ def cache_bottlenecks(sess, image_lists, image_dir, bottleneck_dir,
 
         how_many_bottlenecks += 1
         if how_many_bottlenecks % 100 == 0:
-          tf.logging.info(
-              str(how_many_bottlenecks) + ' bottleneck files created.')
-
+            bottleneck_str = str(how_many_bottlenecks) + " bottleneck files created."
+            msg[JSON_TEXT_BROWSER_KEY] = tuple(bottleneck_str)
+            msg[JSON_PID_KEY] = os.getpid()
+            SHARED_UI_MSG_QUEUE.put(json.dumps(msg))
+            tf.logging.info(bottleneck_str)
 
 def get_random_cached_bottlenecks(sess, image_lists, how_many, category,
                                   bottleneck_dir, image_dir, jpeg_data_tensor,
@@ -1188,7 +1198,7 @@ def main(_):
     # constants.
     str5 = 'Save final result to : ' + FLAGS.output_graph
 
-    msg[JSON_TEXT_BROWSER_KEY] = (str5, "Training complete")
+    msg[JSON_TEXT_BROWSER_KEY] = (str5, "\n\nTraining complete")
     SHARED_UI_MSG_QUEUE.put(json.dumps(msg))
     tf.logging.info(str5)
 
@@ -1201,7 +1211,7 @@ def main(_):
     if FLAGS.saved_model_dir:
       export_model2(module_spec, class_count, FLAGS.saved_model_dir)
 
-def start_training(image_dir, output_graph, output_labels):
+def start_training(image_dir, output_graph, output_labels, test_app):
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--image_dir',
@@ -1313,7 +1323,7 @@ def start_training(image_dir, output_graph, output_labels):
     parser.add_argument(
         '--bottleneck_dir',
         type=str,
-        default='/tmp/bottleneck',
+        default='/tmp/iOS/%s/bottleneck' % test_app,
         help='Path to cache bottleneck layer values as files.'
     )
     parser.add_argument(

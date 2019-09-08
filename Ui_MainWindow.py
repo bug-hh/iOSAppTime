@@ -1,17 +1,9 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'iOSAppTime.ui'
-#
-# Created by: PyQt5 UI code generator 5.13.0
-#
-# WARNING! All changes made in this file will be lost!
-
-
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import QProgressDialog
 from PyQt5.QtCore import QTimer
 from PyQt5.QtCore import pyqtSignal
-
 from PyQt5.QtWidgets import QFileDialog
 
 from multiprocessing import Process
@@ -22,28 +14,41 @@ from queue import Queue
 from ios_minicap.minicap import MinicapStream
 from msg_queue.queue_manager import QueueManager
 
-from app_config.config import TMP_IMG_DIR
+from app_config.config import TMP_IMG_ZHIHU_DIR
+from app_config.config import TMP_IMG_TOP_TODAY_DIR
+from app_config.config import TMP_IMG_BAIDU_DIR
+from app_config.config import TMP_IMG_WEIBO_DIR
+
+from app_config.config import ZHIHU_SORTED_STAGE
+from app_config.config import BAIDU_SORTED_STAGE
+from app_config.config import TOP_TODAY_SORTED_STAGE
+from app_config.config import WEIBO_SORTED_STAGE
+
 from app_config.config import ABOUT_TRAINING
-from app_config.config import IOS_MODEL_NAME
-from app_config.config import IOS_LABEL_NAME
-from app_config.config import TEST_APP
-from app_config.config import SORTED_STAGE
+
 from app_config.config import EXCLUDED_LIST
 from app_config.config import JSON_PROGRESS_BAR_KEY
 from app_config.config import JSON_TEXT_BROWSER_KEY
 from app_config.config import JSON_PID_KEY
-from app_config.config import RETRAIN_PATH
+
+from app_config.config import iOS_ZHIHU_MODEL_NAME
+from app_config.config import iOS_TOP_TODAY_MODEL_NAME
+from app_config.config import iOS_BAIDU_MODEL_NAME
+from app_config.config import iOS_WEIBO_MODEL_NAME
+
+from app_config.config import iOS_ZHIHU_LABEL_NAME
+from app_config.config import iOS_TOP_TODAY_LABEL_NAME
+from app_config.config import iOS_BAIDU_LABEL_NAME
+from app_config.config import iOS_WEIBO_LABEL_NAME
 
 from CalProgressDialog import CalProgressDialog
 from QTSignal import QTSignal
 from cal_time import CalTime
 from google_algorithm import training
 
-
 import os
 import time
 import queue
-import subprocess
 import math
 import json
 
@@ -56,8 +61,19 @@ class Ui_MainWindow(QtCore.QObject):
         super(Ui_MainWindow, self).__init__()
         self.signal_training_progress.connect(self.update_text_browser)
 
+        # 默认为测试 APP 为「知乎」
+        self.test_app_name = "知乎"
+        self.test_app_code = 1
+        self.TEST_APP = "zhihu"
+
+        self.IOS_MODEL_NAME = iOS_ZHIHU_MODEL_NAME
+        self.IOS_LABEL_NAME = iOS_ZHIHU_LABEL_NAME
+        self.TMP_IMG_DIR = TMP_IMG_ZHIHU_DIR
+
+        self.minicap = None
+
     def setupUi(self, MainWindow):
-        self.DEBUG = True
+        self.DEBUG = False
 
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(800, 600)
@@ -69,9 +85,7 @@ class Ui_MainWindow(QtCore.QObject):
         self.verticalLayout = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout.setObjectName("verticalLayout")
-        self.start_minicap_button = QtWidgets.QPushButton(self.verticalLayoutWidget)
-        self.start_minicap_button.setObjectName("start_minicap_button")
-        self.verticalLayout.addWidget(self.start_minicap_button)
+
         self.start_screenshot_button = QtWidgets.QPushButton(self.verticalLayoutWidget)
         self.start_screenshot_button.setObjectName("start_screenshot_button")
         self.verticalLayout.addWidget(self.start_screenshot_button)
@@ -84,6 +98,7 @@ class Ui_MainWindow(QtCore.QObject):
         self.training_button = QtWidgets.QPushButton(self.verticalLayoutWidget)
         self.training_button.setObjectName("training_button")
         self.verticalLayout.addWidget(self.training_button)
+
         self.textBrowser = QtWidgets.QTextBrowser(self.centralwidget)
         self.textBrowser.setGeometry(QtCore.QRect(10, 10, 601, 471))
         self.textBrowser.setObjectName("textBrowser")
@@ -151,12 +166,14 @@ class Ui_MainWindow(QtCore.QObject):
         self.menubar.addAction(self.menu.menuAction())
 
         self.retranslateUi(MainWindow)
-        self.start_minicap_button.clicked.connect(self.on_click_minicap_button)
+
         self.start_screenshot_button.clicked.connect(self.on_click_start_screenshot_button)
         self.stop_screenshot_button.clicked.connect(self.on_click_stop_screenshot_button)
         self.training_button.clicked.connect(self.on_click_training_button)
         self.cal_button.clicked.connect(self.on_click_cal_button)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
+
+        self.comboBox.currentTextChanged.connect(self.on_update_test_app_info)
 
         self.actionAdd_model_file.triggered.connect(self.on_click_set_model_action)
         self.actionSet_training_pictures.triggered.connect(self.on_click_set_pic_action)
@@ -198,7 +215,12 @@ class Ui_MainWindow(QtCore.QObject):
         if self.DEBUG:
             self.start_screenshot_button.setEnabled(False)
             self.stop_screenshot_button.setEnabled(False)
-            self.cal_button.setEnabled(True)
+            self.cal_button.setEnabled(False)
+            self.training_button.setEnabled(False)
+        else:
+            self.start_screenshot_button.setEnabled(False)
+            self.stop_screenshot_button.setEnabled(False)
+            self.cal_button.setEnabled(False)
             self.training_button.setEnabled(False)
 
         self.times = 1
@@ -213,8 +235,8 @@ class Ui_MainWindow(QtCore.QObject):
         self.fileDialog = None
 
         self.remind_user = True
-        self.training_pic_dir = os.path.join(ABOUT_TRAINING, TEST_APP, "iOS_1-50")
-        self.model_path = os.path.join(ABOUT_TRAINING, TEST_APP, "model", IOS_MODEL_NAME)
+        self.training_pic_dir = os.path.join(ABOUT_TRAINING, self.TEST_APP, "iOS_1-50")
+        self.model_path = os.path.join(ABOUT_TRAINING, self.TEST_APP, "model", self.IOS_MODEL_NAME)
         self.WAIT_TIME = 4 # SECONDS
         self.percent = 100 // self.WAIT_TIME
 
@@ -262,11 +284,11 @@ class Ui_MainWindow(QtCore.QObject):
         self.qt_signal.dt_signal[pb_index].emit(pb_index, value)
 
     def _setup_qt_signal(self):
-        screenshots_dir = os.path.join(TMP_IMG_DIR, "iOS")
+        screenshots_dir = os.path.join(self.TMP_IMG_DIR, "iOS")
         times_list = os.listdir(screenshots_dir)
 
         # counter 表示有多少个计算阶段
-        counter = len(SORTED_STAGE) - len(EXCLUDED_LIST)
+        counter = len(self.SORTED_STAGE) - len(EXCLUDED_LIST)
         num = 0
         for t in times_list:
             if t.startswith("."):
@@ -290,13 +312,12 @@ class Ui_MainWindow(QtCore.QObject):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "App 启动时长测量工具"))
-        self.start_minicap_button.setText(_translate("MainWindow", "启动 iOS-minicap"))
         self.start_screenshot_button.setText(_translate("MainWindow", "开始截图"))
         self.stop_screenshot_button.setText(_translate("MainWindow", "结束截图"))
         self.cal_button.setText(_translate("MainWindow", "计算时间"))
         self.training_button.setText(_translate("MainWindow", "一键训练"))
         self.platform_label_text.setText(_translate("MainWindow", "系统版本："))
-        self.app_name_label_text.setText(_translate("MainWindow", "被测 APP 版本:"))
+        self.app_name_label_text.setText(_translate("MainWindow", "被测 APP :"))
         self.menu.setTitle(_translate("MainWindow", "文件"))
         self.actionAdd_model_file.setText(_translate("MainWindow", "添加模型文件"))
         self.actionSet_training_pictures.setText(_translate("MainWindow", "设置训练图片"))
@@ -309,13 +330,12 @@ class Ui_MainWindow(QtCore.QObject):
         time.sleep(5)
 
     def _start_screenshot_process(self):
-        # todo 点完开始截图要等待一会，再让用户点 APP，加一个 progress bar，倒数 5s 达到等待的效果
-        self.minicap = MinicapStream(port=QueueManager.MINICAP_PORT)
+        self.minicap = MinicapStream(port=QueueManager.MINICAP_PORT, test_app_code=self.test_app_code)
         self.minicap.run()
         self.shared_queue.put(self.times)
         self.textBrowser.append("第 %d 次截图开始" % self.times)
         self.textBrowser.append("请等待 %d s，再点击 app 截图" % self.WAIT_TIME)
-
+        self.stop_screenshot_button.setEnabled(True)
         self.times += 1
 
     def _stop_screenshot_process(self):
@@ -332,7 +352,7 @@ class Ui_MainWindow(QtCore.QObject):
     #     return time_stamp
 
     def _dispatch_cal_task(self):
-        screenshots_dir = os.path.join(TMP_IMG_DIR, "iOS")
+        screenshots_dir = os.path.join(self.TMP_IMG_DIR, "iOS")
         ls = os.listdir(screenshots_dir)
         times_list = [ name for name in ls if not name.startswith(".") ]
         times_list.sort()
@@ -375,12 +395,15 @@ class Ui_MainWindow(QtCore.QObject):
             if is_all_finished:
                 break
 
+        c1 = 0
+        c2 = 0
         while True:
             try:
                 launch_time, loading_time = self.shared_answer_queue.get_nowait()
                 aver_launch_time += launch_time
                 aver_home_page_loading_time += loading_time
-                count += 1
+                c1 = c1 + 1 if launch_time != 0 else c1
+                c2 = c2 + 1 if loading_time != 0 else c2
             except queue.Empty:
                 break
 
@@ -388,7 +411,7 @@ class Ui_MainWindow(QtCore.QObject):
             self.cal_progress_dialog.close()
 
         msg = {}
-        str_aver = "平均启动时长：%.3f  平均加载时长: %.3f" %(aver_launch_time / count if count != 0 else 0, aver_home_page_loading_time / count if count != 0 else 0)
+        str_aver = "平均启动时长：%.3f  平均加载时长: %.3f" %(aver_launch_time / c1 if c1 != 0 else 0, aver_home_page_loading_time / c2 if c2 != 0 else 0)
         msg[JSON_TEXT_BROWSER_KEY] = str_aver
         msg[JSON_PID_KEY] = os.getpid()
         self.shared_ui_msg_queue.put(json.dumps(msg))
@@ -401,7 +424,7 @@ class Ui_MainWindow(QtCore.QObject):
         pic_list = os.listdir(pic_dir)
         # thread_signal = self.qt_signal.dt_signal[times_counter]
         # length = len(pic_list)
-        ct = CalTime(main_window=self, times_counter=times_counter)
+        ct = CalTime(main_window=self, times_counter=times_counter, test_app_code=self.test_app_code)
         return ct.cal_time(pic_dir, EXCLUDED_LIST)
 
     def update_progress_bar(self, progress_bar_id, value):
@@ -412,8 +435,8 @@ class Ui_MainWindow(QtCore.QObject):
 
     def _start_training(self, image_path):
         if self.DEBUG:
-            output_graph = os.path.join(ABOUT_TRAINING, TEST_APP, "debug", "model", IOS_MODEL_NAME)
-            output_labels = os.path.join(ABOUT_TRAINING, TEST_APP, "debug", "labels", IOS_LABEL_NAME)
+            output_graph = os.path.join(ABOUT_TRAINING, self.TEST_APP, "debug", "model", self.IOS_MODEL_NAME)
+            output_labels = os.path.join(ABOUT_TRAINING, self.TEST_APP, "debug", "labels", self.IOS_LABEL_NAME)
 
             if not os.path.exists(output_graph):
                 os.makedirs(os.path.dirname(output_graph))
@@ -421,16 +444,18 @@ class Ui_MainWindow(QtCore.QObject):
             if not os.path.exists(output_labels):
                 os.makedirs(os.path.dirname(output_labels))
         else:
-            output_graph = os.path.join(ABOUT_TRAINING, TEST_APP, "model", IOS_MODEL_NAME)
-            output_labels = os.path.join(ABOUT_TRAINING, TEST_APP, "labels", IOS_LABEL_NAME)
+            output_graph = os.path.join(ABOUT_TRAINING, self.TEST_APP, "model", self.IOS_MODEL_NAME)
+            output_labels = os.path.join(ABOUT_TRAINING, self.TEST_APP, "labels", self.IOS_LABEL_NAME)
 
-            if not os.path.exists(output_graph):
-                os.makedirs(os.path.dirname(output_graph))
+            graph_dir = os.path.dirname(output_graph)
+            if not os.path.exists(graph_dir):
+                os.makedirs(graph_dir)
 
-            if not os.path.exists(output_labels):
-                os.makedirs(os.path.dirname(output_labels))
+            label_dir = os.path.dirname(output_labels)
+            if not os.path.exists(label_dir):
+                os.makedirs(label_dir)
 
-        process_training = Process(target=training.start_training, args=(image_path, output_graph, output_labels))
+        process_training = Process(target=training.start_training, args=(image_path, output_graph, output_labels, self.TEST_APP))
         process_training.start()
         # self._startup_progress_dialog("训练模型中", 420, False, self.TRAINING_CLOCK)
 
@@ -486,24 +511,78 @@ class Ui_MainWindow(QtCore.QObject):
         if self.remind_user:
             self.message_box.exec()
             self.remind_user = False if self.check_box.isChecked() else True
-            self._setup_file_dialog("Open image dir", True, os.path.join(ABOUT_TRAINING, TEST_APP, "iOS_1-50"))
+            self._setup_file_dialog("Open image dir", True, os.path.join(ABOUT_TRAINING, self.TEST_APP, "iOS_1-50"))
             if self.fileDialog.exec():
                 self.training_pic_dir = self.fileDialog.selectedFiles()[0]
+                self.textBrowser.append("训练图片文件夹为：%s" % self.training_pic_dir)
                 print(self.training_pic_dir)
                 self.fileDialog.setDirectory(self.training_pic_dir)
+        self.textBrowser.append("正在启动训练进程，请稍等")
         self._start_training(self.training_pic_dir)
 
     def on_click_set_pic_action(self):
-        self._setup_file_dialog("打开一组训练图片文件夹的父文件夹", True, os.path.join(ABOUT_TRAINING, TEST_APP, "iOS_1-50"))
+        self._setup_file_dialog("打开一组训练图片文件夹的父文件夹", True, os.path.join(ABOUT_TRAINING, self.TEST_APP, "iOS_1-50"))
         self.fileDialog.exec()
         self.training_pic_dir = self.fileDialog.selectedFiles()[0]
         self.fileDialog.setDirectory(self.training_pic_dir)
 
     def on_click_set_model_action(self):
-        self._setup_file_dialog("选择一个 模型(.pb)文件", True, os.path.join(ABOUT_TRAINING, TEST_APP, "iOS_1-50"))
+        self._setup_file_dialog("选择一个 模型(.pb)文件", True, os.path.join(ABOUT_TRAINING, self.TEST_APP, "iOS_1-50"))
         self.fileDialog.exec()
         self.model_path = self.fileDialog.selectedFiles()[0]
         self.fileDialog.setDirectory(self.training_pic_dir)
+
+    def on_update_test_app_info(self, current_text):
+        print(current_text)
+        ls = current_text.strip().split()
+        self.test_app_name = ls[0].strip()
+        # 1 知乎 2 微博 3 头条 4 百度
+        if self.test_app_name == "知乎":
+            self.test_app_code = 1
+            self.TEST_APP = "zhihu"
+            self.IOS_MODEL_NAME = iOS_ZHIHU_MODEL_NAME
+            self.IOS_LABEL_NAME = iOS_ZHIHU_LABEL_NAME
+            self.TMP_IMG_DIR = TMP_IMG_ZHIHU_DIR
+            self.SORTED_STAGE = ZHIHU_SORTED_STAGE
+
+        elif self.test_app_name == "微博":
+            self.test_app_code = 2
+            self.TEST_APP = "weibo"
+            self.IOS_MODEL_NAME = iOS_WEIBO_MODEL_NAME
+            self.IOS_LABEL_NAME = iOS_WEIBO_LABEL_NAME
+            self.TMP_IMG_DIR = TMP_IMG_WEIBO_DIR
+            self.SORTED_STAGE = WEIBO_SORTED_STAGE
+
+        elif self.test_app_name == "今日头条":
+            self.test_app_code = 3
+            self.TEST_APP = "top_today"
+            self.IOS_MODEL_NAME = iOS_TOP_TODAY_MODEL_NAME
+            self.IOS_LABEL_NAME = iOS_TOP_TODAY_LABEL_NAME
+            self.TMP_IMG_DIR = TMP_IMG_TOP_TODAY_DIR
+            self.SORTED_STAGE = TOP_TODAY_SORTED_STAGE
+
+        elif self.test_app_name == "百度":
+            self.test_app_code = 4
+            self.TEST_APP = "baidu"
+            self.IOS_MODEL_NAME = iOS_BAIDU_MODEL_NAME
+            self.IOS_LABEL_NAME = iOS_BAIDU_LABEL_NAME
+            self.TMP_IMG_DIR = TMP_IMG_BAIDU_DIR
+            self.SORTED_STAGE = BAIDU_SORTED_STAGE
+
+
+
+        # 当用户选好「被测 APP」后，打开「开始截图」「一键训练」按钮
+        if self.test_app_name != "None":
+            self.start_screenshot_button.setEnabled(True)
+            self.training_button.setEnabled(True)
+            self.textBrowser.append("被测的 APP 是：%s" % self.test_app_name)
+            print(self.TEST_APP)
+        else:
+            self.start_screenshot_button.setEnabled(False)
+            self.stop_screenshot_button.setEnabled(False)
+            self.cal_button.setEnabled(False)
+            self.training_button.setEnabled(False)
+            self.textBrowser.append("请先选择被测的 APP")
 
     def _setup_msg_box(self):
         self.message_box = QtWidgets.QMessageBox()
@@ -581,6 +660,16 @@ class Ui_MainWindow(QtCore.QObject):
         '''
         cmd = "ideviceinstaller -l -o list_user"
         fobj = os.popen(cmd)
-        ls = [line.strip().split("-")[1] for line in fobj if not line.strip().lower().startswith("total")]
+        ls = ["None"]
+        for line in fobj:
+            if line.strip().find("baidu") != -1:
+                ls.append("百度")
+            elif line.strip().find("zhihu") != -1:
+                ls.append("知乎")
+            elif line.strip().find("weibo") != -1:
+                ls.append("微博")
+            elif line.strip().find("article") != -1:
+                ls.append("今日头条")
+
         self.app_version_flag = True if len(ls) > 0 else False
         return ls

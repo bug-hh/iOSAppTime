@@ -2,31 +2,58 @@
 import os
 
 PACKAGE_NAME = 'com.zhihu.ios-dev'
-ACTIVITY_PATH = '.app.ui.activity.LauncherActivity'
 
 ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 RETRAIN_PATH = os.path.join(ROOT_PATH, "google_algorithm", "retrain.py")
-APK_PATH = os.path.join(ROOT_PATH, 'app', 'zhihu_v6_4_0.apk')
-# TMP_IMG_DIR = os.path.join(ROOT_PATH, 'capture', 'tmp_pic')
-# TMP_IMG_DIR = os.path.join(ROOT_PATH, 'capture_baidu', 'tmp_pic_baidu')
-TMP_IMG_DIR = os.path.join(ROOT_PATH, 'capture_top_today', 'tmp_pic_top_today')
 
-IOS_MODEL_NAME = "ios_zhihu_output_graph.pb"
-IOS_LABEL_NAME = "ios_zhihu_output_labels.txt"
+# 实时截图文件夹
+TMP_IMG_ZHIHU_DIR = os.path.join(ROOT_PATH, 'capture_zhihu')
+TMP_IMG_WEIBO_DIR = os.path.join(ROOT_PATH, 'capture_weibo')
+TMP_IMG_TOP_TODAY_DIR = os.path.join(ROOT_PATH, 'capture_top_today')
+TMP_IMG_BAIDU_DIR = os.path.join(ROOT_PATH, 'capture_baidu')
 
+# model
+iOS_ZHIHU_MODEL_NAME = "ios_zhihu_output_graph.pb"
+iOS_WEIBO_MODEL_NAME = "ios_weibo_output_graph.pb"
+iOS_TOP_TODAY_MODEL_NAME = "ios_top_today_output_graph.pb"
+iOS_BAIDU_MODEL_NAME = "ios_baidu_output_graph.pb"
+
+# label
+iOS_ZHIHU_LABEL_NAME = "ios_zhihu_output_labels.txt"
+iOS_WEIBO_LABEL_NAME = "ios_weibo_output_labels.txt"
+iOS_TOP_TODAY_LABEL_NAME = "ios_top_today_output_labels.txt"
+iOS_BAIDU_LABEL_NAME = "ios_baidu_output_labels.txt"
+
+# training 文件，存「机器学习模型」和「机器学习标签」
 ABOUT_TRAINING = os.path.join(ROOT_PATH, 'training')
-ABOUT_CAPTURE = os.path.join(ROOT_PATH, 'capture', 'tmp_pic', 'iOS')
-
-TEST_APP = "zhihu"
 
 if not os.path.exists(ABOUT_TRAINING):
     os.makedirs(ABOUT_TRAINING)
 
-STAGE = ['start', 'newlogo', 'ad', 'loading', 'words', 'end', 'home']
-ANDROID_PERCENT = {'start': 0.90, 'oldlogo': 0.90, 'newlogo': 0.90, 'ad': 0.55, 'loading': 0.60, 'words': 0.90, 'end': 0.9}
-IOS_PERCENT = {'start': 0.96, 'oldlogo': 0.90, 'newlogo': 0.90, 'ad': 0.90, 'loading': 0.96, 'words': 0.85, 'end': 0.85, 'home': 0.90}
-SORTED_STAGE = {'start':1, 'newlogo':2, 'ad':3, 'loading':4, 'end':5}
+# 每个 app 启动存在的几个阶段
+BAIDU_STAGE = ['start', 'logo', 'loading', 'end']
+TOP_TODAY_STAGE = ['start', 'logo', 'ad', 'loading', 'end']
+WEIBO_STAGE = ['start', 'logo', 'ad', 'loading', 'end']
+ZHIHU_STAGE = ['start', 'logo', 'ad', 'loading', 'words', 'end', 'home']
+
+# 每个阶段的阈值
+ZHIHU_PERCENT = {'start': 0.96, 'logo': 0.90, 'ad': 0.90, 'loading': 0.96, 'words': 0.85, 'end': 0.85, 'home': 0.90}
+BAIDU_PERCENT = {'start': 0.96, 'logo': 0.95, 'loading': 0.95, 'end': 0.90}
+TOP_TODAY_PERCENT = {'start': 0.96, 'logo': 0.95, 'ad': 0.95, 'loading': 0.90, 'end': 0.9}
+WEIBO_PERCENT ={'start': 0.9, 'logo': 0.8, 'ad': 0.9, 'loading': 0.9, 'end': 0.9}
+
+# SYL_IOS_PERCENT = {'start': 0.997632, 'loading': 0.97324440, 'end': 0.87187050}
+
+# 将每个阶段映射成一个数字
+ZHIHU_SORTED_STAGE = {'start': 1, 'logo': 2, 'ad': 3, 'loading': 4, 'end': 5}
+BAIDU_SORTED_STAGE = {'start': 1, 'logo': 2, 'loading': 3, 'end': 4}
+TOP_TODAY_SORTED_STAGE = {'start': 1, 'logo': 2, 'ad': 3, 'loading': 4, 'end': 5}
+WEIBO_SORTED_STAGE = {'start': 1, 'logo': 2, 'ad': 3, 'loading': 4, 'end': 5}
+
+# 用 'logo' 找 start
 EXCLUDED_LIST = ['start', 'ad']
+
+# GUI Message Key
 JSON_MINICAP_KEY = 'MINICAP'
 JSON_PROGRESS_BAR_KEY = 'PROGRESS_BAR'
 JSON_TEXT_BROWSER_KEY = 'TEXT_BROWSER'

@@ -8,7 +8,7 @@ import datetime
 from PyQt5.QtCore import QObject, pyqtSignal
 
 from google_algorithm.label_image import identify_pic
-from app_config.config import STAGE, SORTED_STAGE, IOS_PERCENT
+from app_config.config import ZHIHU_STAGE, SORTED_STAGE, ZHIHU_PERCENT
 
 import time
 import queue
@@ -153,7 +153,7 @@ class Foo(QObject):
         :return:
         '''
         y = 0
-        target_precise = int(IOS_PERCENT[target_stage] * 1000)
+        target_precise = int(ZHIHU_PERCENT[target_stage] * 1000)
         pic_path = os.path.join(pic_dir, pic_list[pic_index])
         id_ret = identify_pic(pic_path)
         # prob = round(id_ret[1], 3)
@@ -193,7 +193,7 @@ class Foo(QObject):
         cur = time.time()
         ret = {}
         counter = 0
-        for st in STAGE:
+        for st in ZHIHU_STAGE:
             ret[st] = -1
 
         ls = os.listdir(pic_dir)

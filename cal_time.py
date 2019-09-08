@@ -5,21 +5,32 @@ import datetime
 import time
 import json
 
-from google_algorithm.label_image import identify_pic
+from google_algorithm.label_image import Classifier
 from msg_queue.queue_manager import QueueManager
 
-from app_config.config import STAGE, SORTED_STAGE
+from app_config.config import ZHIHU_STAGE
 from app_config.config import JSON_PROGRESS_BAR_KEY
 from app_config.config import JSON_TEXT_BROWSER_KEY
 from app_config.config import JSON_PID_KEY
-from app_config.config import IOS_PERCENT
+
+from app_config.config import ZHIHU_PERCENT
+from app_config.config import BAIDU_PERCENT
+from app_config.config import TOP_TODAY_PERCENT
+from app_config.config import WEIBO_PERCENT
+
+from app_config.config import ZHIHU_SORTED_STAGE
+from app_config.config import BAIDU_SORTED_STAGE
+from app_config.config import TOP_TODAY_SORTED_STAGE
+from app_config.config import WEIBO_SORTED_STAGE
 
 class CalTime(object):
-    def __init__(self, main_window, times_counter):
+    def __init__(self, main_window, times_counter, test_app_code):
         self.main_window = main_window
         self.times_counter = times_counter
         self.cache = {}
         self.progress = 0
+
+        self.classifier = Classifier(test_app_code)
 
         QueueManager.register('get_ui_msg_queue')
         QueueManager.register('get_answer_queue')
@@ -32,7 +43,26 @@ class CalTime(object):
         self.shared_task_status_dt = self.manager.get_task_status()
 
         self.PID = os.getpid()
+        self.STAGE_PERCENT = ZHIHU_PERCENT
+        self.SORTED_STAGE = ZHIHU_SORTED_STAGE
 
+    def _test_app_adapter(self, test_app_code):
+        # 1 知乎 2 微博 3 头条 4 百度
+        if test_app_code == 1:
+            self.STAGE_PERCENT = ZHIHU_PERCENT
+            self.SORTED_STAGE = ZHIHU_SORTED_STAGE
+
+        elif test_app_code == 2:
+            self.STAGE_PERCENT = WEIBO_PERCENT
+            self.SORTED_STAGE = WEIBO_SORTED_STAGE
+
+        elif test_app_code == 3:
+            self.STAGE_PERCENT = TOP_TODAY_PERCENT
+            self.SORTED_STAGE = TOP_TODAY_SORTED_STAGE
+
+        elif test_app_code == 4:
+            self.STAGE_PERCENT = BAIDU_PERCENT
+            self.SORTED_STAGE = BAIDU_SORTED_STAGE
 
     def upper_bound(self, pic_dir, pic_list, first, last, value, target_stage):
         '''
@@ -57,7 +87,7 @@ class CalTime(object):
                     mid = self.cache[mid_index]
                 else:
                     pic_path = os.path.join(pic_dir, pic_list[mid_index])
-                    mid = identify_pic(pic_path)
+                    mid = self.classifier.identify_pic(pic_path)
                     self.cache[mid_index] = mid
                 if mid:
                     break
@@ -70,7 +100,7 @@ class CalTime(object):
                 return -1
             msg[JSON_PROGRESS_BAR_KEY] = (self.times_counter, self.progress)
             self.shared_ui_msg_queue.put(json.dumps(msg))
-            if SORTED_STAGE[mid[0]] <= value:
+            if self.SORTED_STAGE[mid[0]] <= value:
                 first = mid_index + 1
             else:
                 last = mid_index
@@ -92,7 +122,7 @@ class CalTime(object):
                     mid = self.cache[mid_index]
                 else:
                     pic_path = os.path.join(pic_dir, pic_list[mid_index])
-                    mid = identify_pic(pic_path)
+                    mid = self.classifier.identify_pic(pic_path)
                     self.cache[mid_index] = mid
                 if mid:
                     break
@@ -106,7 +136,7 @@ class CalTime(object):
                 return -1
             msg[JSON_PROGRESS_BAR_KEY] = (self.times_counter, self.progress)
             self.shared_ui_msg_queue.put(json.dumps(msg))
-            if SORTED_STAGE[mid[0]] < value:
+            if self.SORTED_STAGE[mid[0]] < value:
                 first = mid_index + 1
             else:
                 last = mid_index
@@ -132,9 +162,9 @@ class CalTime(object):
         :return:
         '''
         y = 0
-        target_precise = int(IOS_PERCENT[target_stage] * 10000)
+        target_precise = int(self.STAGE_PERCENT[target_stage] * 10000)
         pic_path = os.path.join(pic_dir, pic_list[pic_index])
-        id_ret = identify_pic(pic_path)
+        id_ret = self.classifier.identify_pic(pic_path)
         direction = -1 if target_stage == 'start' else 1
         length = len(pic_list)
         msg = {}
@@ -143,7 +173,7 @@ class CalTime(object):
             self.progress += 1
             pic_index += direction
             pic_path = os.path.join(pic_dir, pic_list[pic_index])
-            id_ret = identify_pic(pic_path)
+            id_ret = self.classifier.identify_pic(pic_path)
             msg[JSON_PROGRESS_BAR_KEY] = (self.times_counter, self.progress)
             self.shared_ui_msg_queue.put(json.dumps(msg))
 
@@ -159,7 +189,7 @@ class CalTime(object):
             pic_index += direction
             pic_path = os.path.join(pic_dir, pic_list[pic_index])
             last = id_ret
-            id_ret = identify_pic(pic_path)
+            id_ret = self.classifier.identify_pic(pic_path)
             prob = round(id_ret[1], 4)
             prob *= 10000
             prob = int(prob)
@@ -172,7 +202,7 @@ class CalTime(object):
         cur = time.time()
         ret = {}
         counter = 0
-        for st in STAGE:
+        for st in ZHIHU_STAGE:
             ret[st] = -1
 
         ls = os.listdir(pic_dir)
@@ -185,13 +215,13 @@ class CalTime(object):
         print(summary)
         msg = {}
         self.cache.clear()
-        for stage in SORTED_STAGE:
+        for stage in self.SORTED_STAGE:
             if stage in exclude_list:
                 continue
             search_method = self.upper_bound if stage == 'start' else self.lower_bound
             is_upper_bound = True if stage == 'start' else False
             self.progress = 0
-            bound_index = search_method(pic_dir, pic_list, 0, length, SORTED_STAGE[stage], stage)
+            bound_index = search_method(pic_dir, pic_list, 0, length, self.SORTED_STAGE[stage], stage)
             if bound_index == -1:
                 ad_str = '该文件夹的截图中含有广告，丢弃这批截图序列'
                 print(ad_str)
@@ -200,7 +230,8 @@ class CalTime(object):
                 self.shared_ui_msg_queue.put(json.dumps(msg))
                 self.shared_task_status_dt.update({self.PID: True})
                 return
-            if stage == 'newlogo':
+            # 用 'logo' 找 'start'
+            if stage == 'logo':
                 stage = 'start'
             search_result = self._check_precise(bound_index, pic_list, pic_dir, is_upper_bound, stage)
             if not self._check_result(is_upper_bound, search_result, length):
@@ -209,6 +240,7 @@ class CalTime(object):
                 msg[JSON_TEXT_BROWSER_KEY] = tuple(error_str)
                 msg[JSON_PID_KEY] = self.PID
                 self.shared_ui_msg_queue.put(json.dumps(msg))
+                self.shared_answer_queue.put((0, 0))
                 self.shared_task_status_dt.update({self.PID: True})
                 return
             else:

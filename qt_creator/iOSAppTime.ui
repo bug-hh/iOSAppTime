@@ -25,13 +25,6 @@
     </property>
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
-      <widget class="QPushButton" name="start_minicap_button">
-       <property name="text">
-        <string>启动 iOS-minicap</string>
-       </property>
-      </widget>
-     </item>
-     <item>
       <widget class="QPushButton" name="start_screenshot_button">
        <property name="text">
         <string>开始截图</string>
@@ -58,9 +51,6 @@
         <string>一键训练</string>
        </property>
       </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="platformComboBox"/>
      </item>
     </layout>
    </widget>
@@ -125,7 +115,7 @@
         </sizepolicy>
        </property>
        <property name="text">
-        <string>被测 APP 版本:</string>
+        <string>被测 APP :</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignCenter</set>

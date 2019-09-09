@@ -31,19 +31,19 @@ class Classifier(object):
         if model_code == 1:
             self.model_dir = "zhihu"
             self.model_name = iOS_ZHIHU_MODEL_NAME
-            self.labels = ['ad', 'end', 'loading', 'newlogo', 'oldlogo', 'start', 'words']
+            self.labels = ['ad', 'bad', 'end', 'loading', 'logo', 'start']
         elif model_code == 2:
             self.model_dir = "weibo"
             self.model_name = iOS_WEIBO_MODEL_NAME
-            self.labels = ['ad', 'end', 'loading', 'logo', 'start']
+            self.labels = ['ad', 'bad', 'end', 'loading', 'logo', 'start']
         elif model_code == 3:
             self.model_dir = "top_today"
             self.model_name = iOS_TOP_TODAY_MODEL_NAME
-            self.labels = ['ad', 'end', 'loading', 'logo', 'start']
+            self.labels = ['ad', 'bad', 'end', 'loading', 'logo', 'start']
         elif model_code == 4:
             self.model_dir = "baidu"
             self.model_name = iOS_BAIDU_MODEL_NAME
-            self.labels = ['end', 'loading', 'logo', 'start']
+            self.labels = ['bad', 'end', 'loading', 'logo', 'start']
 
         model_file = os.path.join(ABOUT_TRAINING, self.model_dir, 'model', self.model_name)
         self.graph = load_graph(model_file)

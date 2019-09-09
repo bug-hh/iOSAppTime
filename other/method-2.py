@@ -143,8 +143,8 @@ class Foo(QObject):
                     else:
                         mid_index += 1
 
-            # 如果有广告，则直接丢弃该批截图序列
-            if mid[0] == 'ad':
+            # 如果有「广告」或者「坏图」，则直接丢弃该批截图序列
+            if mid[0] == 'ad' or mid[0] == 'bad':
                 return -1
 
             if self.SORTED_STAGE[mid[0]] <= value:
@@ -179,8 +179,8 @@ class Foo(QObject):
                     else:
                         mid_index += 1
 
-            # 如果有广告，则直接丢弃该批截图序列
-            if mid[0] == 'ad':
+            # 如果有「广告」或 「坏图」，则直接丢弃该批截图序列
+            if mid[0] == 'ad' or mid[0] == 'bad':
                 return -1
             if self.SORTED_STAGE[mid[0]] < value:
                 first = mid_index + 1
@@ -217,11 +217,14 @@ class Foo(QObject):
         id_ret = self.classifier.identify_pic(pic_path)
         direction = -1 if target_stage == 'start' else 1
 
-        while id_ret[0] != target_stage and 0 <= pic_index < length:
+        while id_ret[0] != target_stage and 1 <= pic_index < length - 1:
             y += 1
             pic_index += direction
             pic_path = os.path.join(pic_dir, pic_list[pic_index])
             id_ret = self.classifier.identify_pic(pic_path)
+            if id_ret[0] == 'ad':
+                print('check_precise： ', '有广告')
+                return -1, None
 
         if target_stage not in ('start', 'loading', 'end'):
             return pic_index, id_ret
@@ -232,7 +235,7 @@ class Foo(QObject):
         last = None
 
         # 先找出 prob >= target_precise
-        while prob < target_precise and 0 <= pic_index < length:
+        while prob < target_precise and 1 <= pic_index < length - 1:
             y += 1
             pic_index += direction
             pic_path = os.path.join(pic_dir, pic_list[pic_index])
@@ -272,7 +275,7 @@ class Foo(QObject):
             # 通过 logo 算 start ，loading、end 阶段通过求 lower_bound 计算
             bound_index = search_method(pic_dir, pic_list, 0, length, self.SORTED_STAGE[stage], stage)
             if bound_index == -1:
-                ad_str = '该文件夹的截图中含有广告，丢弃这批截图序列'
+                ad_str = '该文件夹的截图中含有广告/坏图，丢弃这批截图序列'
                 print(ad_str)
                 return
             elif bound_index == -2:
@@ -284,6 +287,7 @@ class Foo(QObject):
             search_result = self._check_precise(bound_index, pic_list, pic_dir, is_upper_bound, stage)
             if not self._check_result(is_upper_bound, search_result, length):
                 print("%s 阶段不存在" % stage)
+                ret[stage] = (-1, None, None)
             else:
                 index = search_result[0] - 1 if is_upper_bound else search_result[0]
                 pic_path = os.path.join(pic_dir, pic_list[index])
@@ -385,18 +389,17 @@ class Foo(QObject):
                 print(pic, ret)
             print("------------")
 
-
 if __name__ == '__main__':
     # 1 知乎 2 微博 3 头条 4 百度
-    f = Foo(4)
+
+    # 微博 「2，3，4，5，6，7，8，9」都有 ad
+    f = Foo(2)
     ios_dir = os.path.join(f.TMP_IMG_DIR, "iOS")
     print(ios_dir)
     pic_dir_list = os.listdir(ios_dir)
     pic_dir_list.sort()
     for pic_dir in pic_dir_list:
         if pic_dir.startswith("."):
-            continue
-        if pic_dir != "6":
             continue
         print(pic_dir)
         pic_dir_path = os.path.join(ios_dir, pic_dir)
@@ -418,16 +421,16 @@ if __name__ == '__main__':
     # print("start -> loading: ", loading - start)
     # print("loading -> end: ", end - loading)
 
-    # pic_dir = "/Users/bughh/PycharmProjects/iOSAppTime/training/weibo/test/"
-    # id_dir = "ad"
-    # temp = os.path.join(pic_dir, id_dir)
+    pic_dir = "/Users/bughh/PycharmProjects/iOSAppTime/training/baidu/test/"
+    id_dir = "bad"
+    temp = os.path.join(pic_dir, id_dir)
     # print(os.path.basename(temp))
-    # pic_name = "test-ad-3.jpg"
-    # pic_path = os.path.join(pic_dir, id_dir, pic_name)
-    # # t1 = time.time()
-    # classifier = Classifier(2)
-    # ret = classifier.identify_pic(pic_path)
-    # print(ret)
+    pic_name = "test-bad-1.jpg"
+    pic_path = os.path.join(pic_dir, id_dir, pic_name)
+    # t1 = time.time()
+    classifier = Classifier(4)
+    ret = classifier.identify_pic(pic_path)
+    print(ret)
     # t2 = time.time()
     # print(t2 - t1)
     # f = Foo()

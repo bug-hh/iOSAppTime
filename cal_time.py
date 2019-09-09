@@ -75,6 +75,8 @@ class CalTime(object):
         :param value:
         :return:
         '''
+        if last == 0:
+            return -2
         z = 0
         length = last + 1
         msg = {JSON_PROGRESS_BAR_KEY: None}
@@ -110,6 +112,8 @@ class CalTime(object):
 
     # todo 加入进度条代码
     def lower_bound(self, pic_dir, pic_list, first, last, value, target_stage):
+        if last == 0:
+            return -2
         z = 0
         length = last
         msg = {JSON_PROGRESS_BAR_KEY: None}
@@ -168,7 +172,7 @@ class CalTime(object):
         direction = -1 if target_stage == 'start' else 1
         length = len(pic_list)
         msg = {}
-        while id_ret[0] != target_stage and pic_index < length:
+        while id_ret[0] != target_stage and 0 <= pic_index < length:
             y += 1
             self.progress += 1
             pic_index += direction
@@ -184,7 +188,7 @@ class CalTime(object):
         prob *= 10000
         prob = int(prob)
         last = None
-        while prob < target_precise and pic_index < length:
+        while prob < target_precise and 0 <= pic_index < length:
             y += 1
             pic_index += direction
             pic_path = os.path.join(pic_dir, pic_list[pic_index])

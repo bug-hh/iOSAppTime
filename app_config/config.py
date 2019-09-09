@@ -34,11 +34,11 @@ if not os.path.exists(ABOUT_TRAINING):
 BAIDU_STAGE = ['start', 'logo', 'loading', 'end']
 TOP_TODAY_STAGE = ['start', 'logo', 'ad', 'loading', 'end']
 WEIBO_STAGE = ['start', 'logo', 'ad', 'loading', 'end']
-ZHIHU_STAGE = ['start', 'logo', 'ad', 'loading', 'words', 'end', 'home']
+ZHIHU_STAGE = ['start', 'logo', 'ad', 'loading', 'words', 'end']
 
 # 每个阶段的阈值
 ZHIHU_PERCENT = {'start': 0.96, 'logo': 0.90, 'ad': 0.90, 'loading': 0.96, 'words': 0.85, 'end': 0.85, 'home': 0.90}
-BAIDU_PERCENT = {'start': 0.96, 'logo': 0.95, 'loading': 0.95, 'end': 0.90}
+BAIDU_PERCENT = {'start': 0.96, 'logo': 0.95, 'loading': 0.95, 'end': 0.60}
 TOP_TODAY_PERCENT = {'start': 0.96, 'logo': 0.95, 'ad': 0.95, 'loading': 0.90, 'end': 0.9}
 WEIBO_PERCENT ={'start': 0.9, 'logo': 0.8, 'ad': 0.9, 'loading': 0.9, 'end': 0.9}
 

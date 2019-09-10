@@ -252,6 +252,11 @@ class Foo(QObject):
         return pic_index, id_ret if last is None else pic_index - 1, last
 
     def cal_time(self, pic_dir, exclude_list):
+
+        self.start_exist = False
+        self.loading_exist = False
+        self.end_exist = False
+
         cur = time.time()
         ret = {}
         counter = 0
@@ -393,13 +398,15 @@ if __name__ == '__main__':
     # 1 知乎 2 微博 3 头条 4 百度
 
     # 微博 「2，3，4，5，6，7，8，9」都有 ad
-    f = Foo(2)
+    f = Foo(3)
     ios_dir = os.path.join(f.TMP_IMG_DIR, "iOS")
     print(ios_dir)
     pic_dir_list = os.listdir(ios_dir)
     pic_dir_list.sort()
     for pic_dir in pic_dir_list:
         if pic_dir.startswith("."):
+            continue
+        if pic_dir != '13':
             continue
         print(pic_dir)
         pic_dir_path = os.path.join(ios_dir, pic_dir)
@@ -421,16 +428,16 @@ if __name__ == '__main__':
     # print("start -> loading: ", loading - start)
     # print("loading -> end: ", end - loading)
 
-    pic_dir = "/Users/bughh/PycharmProjects/iOSAppTime/training/baidu/test/"
-    id_dir = "bad"
-    temp = os.path.join(pic_dir, id_dir)
-    # print(os.path.basename(temp))
-    pic_name = "test-bad-1.jpg"
-    pic_path = os.path.join(pic_dir, id_dir, pic_name)
-    # t1 = time.time()
-    classifier = Classifier(4)
-    ret = classifier.identify_pic(pic_path)
-    print(ret)
+    # pic_dir = "/Users/bughh/PycharmProjects/iOSAppTime/training/top_today/test/"
+    # id_dir = "end"
+    # temp = os.path.join(pic_dir, id_dir)
+    # # print(os.path.basename(temp))
+    # pic_name = "test-end-4.jpg"
+    # pic_path = os.path.join(pic_dir, id_dir, pic_name)
+    # # t1 = time.time()
+    # classifier = Classifier(3)
+    # ret = classifier.identify_pic(pic_path)
+    # print(ret)
     # t2 = time.time()
     # print(t2 - t1)
     # f = Foo()

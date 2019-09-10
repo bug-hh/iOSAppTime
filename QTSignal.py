@@ -5,7 +5,7 @@ from PyQt5.QtCore import pyqtSignal, QObject
 
 class QTSignal(QObject):
 
-    for i in range(21):
+    for i in range(31):
         cmd = "signal_%d = pyqtSignal(int, int)" % i
         exec(cmd)
 

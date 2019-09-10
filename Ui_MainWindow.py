@@ -27,9 +27,11 @@ from app_config.config import WEIBO_SORTED_STAGE
 from app_config.config import ABOUT_TRAINING
 
 from app_config.config import EXCLUDED_LIST
+
 from app_config.config import JSON_PROGRESS_BAR_KEY
 from app_config.config import JSON_TEXT_BROWSER_KEY
 from app_config.config import JSON_PID_KEY
+from app_config.config import JSON_PROGRESS_DIALOG_CLOSE
 
 from app_config.config import iOS_ZHIHU_MODEL_NAME
 from app_config.config import iOS_TOP_TODAY_MODEL_NAME
@@ -71,6 +73,7 @@ class Ui_MainWindow(QtCore.QObject):
         self.TMP_IMG_DIR = TMP_IMG_ZHIHU_DIR
 
         self.minicap = None
+        self.task_process_dt = {}
 
     def setupUi(self, MainWindow):
         self.DEBUG = False
@@ -265,6 +268,8 @@ class Ui_MainWindow(QtCore.QObject):
                         data_progress = msg[key]
                     elif key == JSON_PID_KEY:
                         data_pid = msg[key]
+                    elif key == JSON_PROGRESS_DIALOG_CLOSE:
+                        self.cal_progress_dialog.close()
                 if data_browser:
                     self._update_info(data_browser, data_pid)
                 if data_progress:
@@ -286,7 +291,7 @@ class Ui_MainWindow(QtCore.QObject):
     def _setup_qt_signal(self):
         screenshots_dir = os.path.join(self.TMP_IMG_DIR, "iOS")
         times_list = os.listdir(screenshots_dir)
-
+        times_list.sort()
         # counter 表示有多少个计算阶段
         counter = len(self.SORTED_STAGE) - len(EXCLUDED_LIST)
         num = 0
@@ -297,6 +302,8 @@ class Ui_MainWindow(QtCore.QObject):
                 # dt 中的 value 中用于设定 progress bar 中的 maximum 值
                 pic_dir = os.path.join(screenshots_dir, t)
                 pic_amount = int(os.popen("ls -l %s | wc -l " % pic_dir).read())
+                if pic_amount <= 0:
+                    continue
                 search_price = int(math.log(pic_amount, 2)) + 1
                 search_price *= counter  # 所有阶段「全局查找中，二分查找」的搜索次数总和的最大值
                 adjustment_price = 10 * counter  # 所有阶段 「局部调整中，线性查找」的搜索次数总和的最大值
@@ -346,46 +353,41 @@ class Ui_MainWindow(QtCore.QObject):
         self.shared_queue.put(-1)
         self.textBrowser.append("截图停止")
 
-    # @staticmethod
-    # def _get_time_stamp(pic):
-    #     time_stamp = os.path.getctime(pic)
-    #     return time_stamp
-
     def _dispatch_cal_task(self):
         screenshots_dir = os.path.join(self.TMP_IMG_DIR, "iOS")
-        ls = os.listdir(screenshots_dir)
-        times_list = [ name for name in ls if not name.startswith(".") ]
+        times_list = list(self.search_price_dt.keys())
         times_list.sort()
         i = 0
         flag_1 = False
         flag_2 = False
         length = len(self.search_price_dt)
-        progress_bar_index_ls = list(self.search_price_dt.keys())
-        aver_launch_time = 0
-        aver_home_page_loading_time = 0
-        count = 0
+        finished_list = []
 
         while i < length:
-            if not flag_1:
-                pictures_dir_1 = os.path.join(screenshots_dir, times_list[i])
-                task_process_1 = Process(target=self._cal_time, args=(pictures_dir_1, progress_bar_index_ls[i]))
+            if not flag_1 and i < length:
+                pictures_dir_1 = os.path.join(screenshots_dir, str(times_list[i]))
+                task_process_1 = Process(target=self._cal_time, args=(pictures_dir_1, times_list[i]))
                 task_process_1.start()
                 self.shared_task_status_dt.setdefault(task_process_1.pid, False)
                 flag_1 = True
                 i += 1
 
             if not flag_2 and i < length:
-                pictures_dir_2 = os.path.join(screenshots_dir, times_list[i])
-                task_process_2 = Process(target=self._cal_time, args=(pictures_dir_2, progress_bar_index_ls[i]))
+                pictures_dir_2 = os.path.join(screenshots_dir, str(times_list[i]))
+                task_process_2 = Process(target=self._cal_time, args=(pictures_dir_2, times_list[i]))
                 task_process_2.start()
                 self.shared_task_status_dt.setdefault(task_process_2.pid, False)
                 flag_2 = True
                 i += 1
 
-            if not task_process_1.is_alive():
+            status1 = self.shared_task_status_dt.get(task_process_1.pid)
+            if status1 and task_process_1.pid not in finished_list:
+                finished_list.append(task_process_1.pid)
                 flag_1 = False
 
-            if not task_process_2.is_alive():
+            status2 = self.shared_task_status_dt.get(task_process_2.pid)
+            if status2 and task_process_2.pid not in finished_list:
+                finished_list.append(task_process_2.pid)
                 flag_2 = False
 
         while True:
@@ -397,21 +399,39 @@ class Ui_MainWindow(QtCore.QObject):
 
         c1 = 0
         c2 = 0
+
+        # 最终结果去掉一个最小值和一个最大值，再计算平均值
+        launch_time_ls = []
+        loading_time_ls = []
+
         while True:
             try:
                 launch_time, loading_time = self.shared_answer_queue.get_nowait()
-                aver_launch_time += launch_time
-                aver_home_page_loading_time += loading_time
-                c1 = c1 + 1 if launch_time != 0 else c1
-                c2 = c2 + 1 if loading_time != 0 else c2
+                if launch_time > 0:
+                    launch_time_ls.append(int(launch_time * 1000))
+                if loading_time > 0:
+                    loading_time_ls.append(int(loading_time * 1000))
             except queue.Empty:
                 break
 
-        if self.cal_progress_dialog:
-            self.cal_progress_dialog.close()
+        launch_time_ls.sort()
+        loading_time_ls.sort()
+        len1 = len(launch_time_ls)
+        len2 = len(loading_time_ls)
+
+        if len1 > 2:
+            aver_launch_time = 1.0 * sum(launch_time_ls[1:-1]) / (len1 - 2)
+        else:
+            aver_launch_time = 0
+
+        if len2 > 2:
+            aver_home_page_loading_time = 1.0 * sum(loading_time_ls[1:-1]) / (len2 - 2)
+        else:
+            aver_home_page_loading_time = 0
 
         msg = {}
         str_aver = "平均启动时长：%.3f  平均加载时长: %.3f" %(aver_launch_time / c1 if c1 != 0 else 0, aver_home_page_loading_time / c2 if c2 != 0 else 0)
+        msg[JSON_PROGRESS_DIALOG_CLOSE] = True
         msg[JSON_TEXT_BROWSER_KEY] = str_aver
         msg[JSON_PID_KEY] = os.getpid()
         self.shared_ui_msg_queue.put(json.dumps(msg))
@@ -421,9 +441,6 @@ class Ui_MainWindow(QtCore.QObject):
         self.textBrowser.append(content)
 
     def _cal_time(self, pic_dir, times_counter):
-        pic_list = os.listdir(pic_dir)
-        # thread_signal = self.qt_signal.dt_signal[times_counter]
-        # length = len(pic_list)
         ct = CalTime(main_window=self, times_counter=times_counter, test_app_code=self.test_app_code)
         return ct.cal_time(pic_dir, EXCLUDED_LIST)
 
@@ -457,8 +474,6 @@ class Ui_MainWindow(QtCore.QObject):
 
         process_training = Process(target=training.start_training, args=(image_path, output_graph, output_labels, self.TEST_APP))
         process_training.start()
-        # self._startup_progress_dialog("训练模型中", 420, False, self.TRAINING_CLOCK)
-
 
     def _checkout_ios_minicap(self):
         status, pid = Ui_MainWindow.query_service(QueueManager.MINICAP_PORT)
@@ -500,13 +515,15 @@ class Ui_MainWindow(QtCore.QObject):
         self.start_screenshot_button.setEnabled(True)
 
     def on_click_cal_button(self):
+        self.textBrowser.clear()
+        self.textBrowser.append("正在启动计算进程")
         self._setup_qt_signal()
         self.cal_progress_dialog.show()
         cal_process = Process(target=self._dispatch_cal_task)
         cal_process.start()
 
     def on_click_training_button(self):
-        # todo 弹出一个对话框，让用户选择训练图片文件夹，pb 和 label 文件不用指定路径，存放在默认路径
+        # 弹出一个对话框，让用户选择训练图片文件夹，pb 和 label 文件不用指定路径，存放在默认路径
         # 选择完 image 文件夹后，调用 _start_training, self.training_pic_dir 初始化为默认路径
         if self.remind_user:
             self.message_box.exec()
@@ -569,12 +586,11 @@ class Ui_MainWindow(QtCore.QObject):
             self.TMP_IMG_DIR = TMP_IMG_BAIDU_DIR
             self.SORTED_STAGE = BAIDU_SORTED_STAGE
 
-
-
         # 当用户选好「被测 APP」后，打开「开始截图」「一键训练」按钮
         if self.test_app_name != "None":
             self.start_screenshot_button.setEnabled(True)
             self.training_button.setEnabled(True)
+            self.cal_button.setEnabled(True)
             self.textBrowser.append("被测的 APP 是：%s" % self.test_app_name)
             print(self.TEST_APP)
         else:
@@ -592,7 +608,6 @@ class Ui_MainWindow(QtCore.QObject):
         self.message_box.setCheckBox(self.check_box)
 
     def _setup_file_dialog(self, title, is_modal, default_dir):
-        # self.fileDialog = QFileDialog(parent=None, caption="Open image dir")
         self.fileDialog = QFileDialog(parent=None, caption=title)
         self.fileDialog.setModal(is_modal)
         self.fileDialog.setViewMode(QFileDialog.List)
@@ -664,7 +679,7 @@ class Ui_MainWindow(QtCore.QObject):
         for line in fobj:
             if line.strip().find("baidu") != -1:
                 ls.append("百度")
-            elif line.strip().find("zhihu") != -1:
+            elif line.strip().find("zhihu.ios") != -1:
                 ls.append("知乎")
             elif line.strip().find("weibo") != -1:
                 ls.append("微博")

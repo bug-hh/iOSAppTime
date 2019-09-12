@@ -150,23 +150,23 @@ class Ui_MainWindow(QtCore.QObject):
         self.horizontalLayout.addWidget(self.comboBox)
 
         MainWindow.setCentralWidget(self.centralwidget)
-        self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 22))
-        self.menubar.setObjectName("menubar")
-        self.menu = QtWidgets.QMenu(self.menubar)
-        self.menu.setObjectName("menu")
-        MainWindow.setMenuBar(self.menubar)
+        # self.menubar = QtWidgets.QMenuBar(MainWindow)
+        # self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 22))
+        # self.menubar.setObjectName("menubar")
+        # self.menu = QtWidgets.QMenu(self.menubar)
+        # self.menu.setObjectName("menu")
+        # MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
         MainWindow.setStatusBar(self.statusbar)
-        self.actionAdd_model_file = QtWidgets.QAction(MainWindow)
-        self.actionAdd_model_file.setObjectName("actionAdd_model_file")
-        self.actionSet_training_pictures = QtWidgets.QAction(MainWindow)
-        self.actionSet_training_pictures.setObjectName("actionSet_training_pictures")
-        self.menu.addAction(self.actionAdd_model_file)
-        self.menu.addSeparator()
-        self.menu.addAction(self.actionSet_training_pictures)
-        self.menubar.addAction(self.menu.menuAction())
+        # self.actionAdd_model_file = QtWidgets.QAction(MainWindow)
+        # self.actionAdd_model_file.setObjectName("actionAdd_model_file")
+        # self.actionSet_training_pictures = QtWidgets.QAction(MainWindow)
+        # self.actionSet_training_pictures.setObjectName("actionSet_training_pictures")
+        # self.menu.addAction(self.actionAdd_model_file)
+        # self.menu.addSeparator()
+        # self.menu.addAction(self.actionSet_training_pictures)
+        # self.menubar.addAction(self.menu.menuAction())
 
         self.retranslateUi(MainWindow)
 
@@ -178,8 +178,8 @@ class Ui_MainWindow(QtCore.QObject):
 
         self.comboBox.currentTextChanged.connect(self.on_update_test_app_info)
 
-        self.actionAdd_model_file.triggered.connect(self.on_click_set_model_action)
-        self.actionSet_training_pictures.triggered.connect(self.on_click_set_pic_action)
+        # self.actionAdd_model_file.triggered.connect(self.on_click_set_model_action)
+        # self.actionSet_training_pictures.triggered.connect(self.on_click_set_pic_action)
 
         self.ios_version_flag = False
         self.app_version_flag = False
@@ -325,9 +325,9 @@ class Ui_MainWindow(QtCore.QObject):
         self.training_button.setText(_translate("MainWindow", "一键训练"))
         self.platform_label_text.setText(_translate("MainWindow", "系统版本："))
         self.app_name_label_text.setText(_translate("MainWindow", "被测 APP :"))
-        self.menu.setTitle(_translate("MainWindow", "文件"))
-        self.actionAdd_model_file.setText(_translate("MainWindow", "添加模型文件"))
-        self.actionSet_training_pictures.setText(_translate("MainWindow", "设置训练图片"))
+        # self.menu.setTitle(_translate("MainWindow", "文件"))
+        # self.actionAdd_model_file.setText(_translate("MainWindow", "添加模型文件"))
+        # self.actionSet_training_pictures.setText(_translate("MainWindow", "设置训练图片"))
 
     def _start_minicap(self):
         cwd = os.getcwd()
@@ -397,9 +397,6 @@ class Ui_MainWindow(QtCore.QObject):
             if is_all_finished:
                 break
 
-        c1 = 0
-        c2 = 0
-
         # 最终结果去掉一个最小值和一个最大值，再计算平均值
         launch_time_ls = []
         loading_time_ls = []
@@ -429,9 +426,12 @@ class Ui_MainWindow(QtCore.QObject):
         else:
             aver_home_page_loading_time = 0
 
+        aver_launch_time /= 1000
+        aver_home_page_loading_time /= 1000
+
         msg = {}
-        str_aver = "平均启动时长：%.3f  平均加载时长: %.3f" %(aver_launch_time / c1 if c1 != 0 else 0, aver_home_page_loading_time / c2 if c2 != 0 else 0)
-        msg[JSON_PROGRESS_DIALOG_CLOSE] = True
+        str_aver = "平均启动时长：%.3f  平均加载时长: %.3f" %(aver_launch_time , aver_home_page_loading_time)
+        # msg[JSON_PROGRESS_DIALOG_CLOSE] = True
         msg[JSON_TEXT_BROWSER_KEY] = str_aver
         msg[JSON_PID_KEY] = os.getpid()
         self.shared_ui_msg_queue.put(json.dumps(msg))
@@ -592,7 +592,9 @@ class Ui_MainWindow(QtCore.QObject):
             self.training_button.setEnabled(True)
             self.cal_button.setEnabled(True)
             self.textBrowser.append("被测的 APP 是：%s" % self.test_app_name)
+            self.remind_user = True
             print(self.TEST_APP)
+
         else:
             self.start_screenshot_button.setEnabled(False)
             self.stop_screenshot_button.setEnabled(False)

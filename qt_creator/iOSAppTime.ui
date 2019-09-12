@@ -135,27 +135,6 @@
     </layout>
    </widget>
   </widget>
-  <widget class="QMenuBar" name="menubar">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>800</width>
-     <height>22</height>
-    </rect>
-   </property>
-   <widget class="QMenu" name="menu">
-    <property name="title">
-     <string>File</string>
-    </property>
-    <addaction name="actionSet_ipa_file_path"/>
-    <addaction name="separator"/>
-    <addaction name="actionAdd_model_file"/>
-    <addaction name="separator"/>
-    <addaction name="actionSet_training_pictures"/>
-   </widget>
-   <addaction name="menu"/>
-  </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionSet_ipa_file_path">
    <property name="text">

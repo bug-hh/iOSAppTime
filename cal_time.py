@@ -269,7 +269,7 @@ class CalTime(object):
 
         i = 0
         length = len(pic_list)
-        summary = "总共包含 %d 张图片" % (length)
+        summary = "文件夹 %s 总共包含 %d 张图片" % (os.path.basename(pic_dir), length)
         print(summary)
         msg = {}
         self.cache.clear()

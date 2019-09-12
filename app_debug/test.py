@@ -5,7 +5,7 @@ import os
 import requests
 from optparse import OptionParser
 from app_config.config import APK_PATH
-from other.ios_tester import IOSTester
+from app_debug.ios_tester import IOSTester
 
 
 def _send_report(post_data, apk_info):

@@ -8,8 +8,6 @@ from msg_queue.queue_manager import QueueManager
 
 import os
 import sys
-import app_config
-import shutil
 
 class iOSAppTime(QtWidgets.QMainWindow):
     def __init__(self):
@@ -45,6 +43,4 @@ def main():
 if __name__ == '__main__':
     main()
 
-
-# todo 被测 app 中两个「知乎」
 

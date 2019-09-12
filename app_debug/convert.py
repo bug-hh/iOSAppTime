@@ -6,7 +6,7 @@ import os
 import sys
 import shutil
 
-from other.ios_driver_factory import iOSDriverFactory
+from app_debug.ios_driver_factory import iOSDriverFactory
 
 def new_dir(_new_dir):
     """

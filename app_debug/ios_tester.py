@@ -12,7 +12,7 @@ from google_algorithm.label_image import identify_pic
 
 from record import Record
 
-from other.ios_driver_factory import iOSDriverFactory
+from app_debug.ios_driver_factory import iOSDriverFactory
 
 class IOSTester(object):
     LOCK = threading.Lock()

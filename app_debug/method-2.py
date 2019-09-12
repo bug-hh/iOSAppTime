@@ -50,6 +50,7 @@ class Foo(QObject):
                 exec(cmd)
         self.cache = {}
         self.classifier = Classifier(test_app_code)
+        self.bad_times = 0
 
         self.start_exist = False
         self.loading_exist = False
@@ -124,6 +125,7 @@ class Foo(QObject):
         if last == 0:
             return -2
         z = 0
+        self.bad_times = 0
         length = last + 1
         while first < last:
             z += 1
@@ -135,16 +137,20 @@ class Foo(QObject):
                     pic_path = os.path.join(pic_dir, pic_list[mid_index])
                     mid = self.classifier.identify_pic(pic_path)
                     self.cache[mid_index] = mid
-                if mid:
+                if mid and mid[0] != 'bad':
                     break
                 else:
+                    self.bad_times += 1
+                    if self.bad_times >= 5:
+                        return -2
                     if mid_index + 1 >= length:
                         return length
                     else:
                         mid_index += 1
 
-            # 如果有「广告」或者「坏图」，则直接丢弃该批截图序列
-            if mid[0] == 'ad' or mid[0] == 'bad':
+            # 如果有「广告」则直接丢弃该批截图序列
+            if mid[0] == 'ad':
+                print('ad', pic_path)
                 return -1
 
             if self.SORTED_STAGE[mid[0]] <= value:
@@ -160,6 +166,7 @@ class Foo(QObject):
         if last == 0:
             return -2
         z = 0
+        self.bad_times = 0
         length = last
         while first < last:
             z += 1
@@ -171,16 +178,20 @@ class Foo(QObject):
                     pic_path = os.path.join(pic_dir, pic_list[mid_index])
                     mid = self.classifier.identify_pic(pic_path)
                     self.cache[mid_index] = mid
-                if mid:
+                if mid and mid[0] != 'bad':
                     break
                 else:
+                    self.bad_times += 1
+                    if self.bad_times >= 5:
+                        return -2
                     if mid_index + 1 >= length:
                         return length
                     else:
                         mid_index += 1
 
-            # 如果有「广告」或 「坏图」，则直接丢弃该批截图序列
-            if mid[0] == 'ad' or mid[0] == 'bad':
+            # 如果有「广告」，则直接丢弃该批截图序列
+            if mid[0] == 'ad':
+                print('ad', pic_path)
                 return -1
             if self.SORTED_STAGE[mid[0]] < value:
                 first = mid_index + 1
@@ -269,7 +280,7 @@ class Foo(QObject):
 
         i = 0
         length = len(pic_list)
-        summary = "总共包含 %d 张图片" % (length)
+        summary = "文件夹 %s 总共包含 %d 张图片" % (os.path.basename(pic_dir), length)
         print(summary)
         self.cache.clear()
         for stage in self.SORTED_STAGE:
@@ -279,14 +290,10 @@ class Foo(QObject):
             is_upper_bound = True if stage == 'start' else False
             # 通过 logo 算 start ，loading、end 阶段通过求 lower_bound 计算
             bound_index = search_method(pic_dir, pic_list, 0, length, self.SORTED_STAGE[stage], stage)
-            if bound_index == -1:
-                ad_str = '该文件夹的截图中含有广告/坏图，丢弃这批截图序列'
-                print(ad_str)
+
+            if self._handle_ad_and_bad(bound_index):
                 return
-            elif bound_index == -2:
-                empty_str = '该文件夹为空'
-                print(empty_str)
-                return
+
             if stage == 'logo':
                 stage = 'start'
             search_result = self._check_precise(bound_index, pic_list, pic_dir, is_upper_bound, stage)
@@ -375,6 +382,22 @@ class Foo(QObject):
         ts = datetime.datetime.timestamp(d)
         return ts
 
+    def _handle_ad_and_bad(self, bound_index):
+        if bound_index >= 0:
+            return False
+
+        ad_str, bad_str = None, None
+        if bound_index == -1:
+            ad_str = '文件夹 %d 的截图中含有广告，丢弃这批截图序列' % self.times_counter
+            print(ad_str)
+        elif bound_index == -2:
+            bad_str = '文件夹 %d 的截图中含有大于或等于 5 张坏图，丢弃这批截图序列' % self.times_counter
+            print(bad_str)
+
+        exception_str = ad_str if ad_str else bad_str
+        print(exception_str)
+        return True
+
     def test2(self):
         stage_dir = os.path.join(config.ABOUT_TRAINING, "zhihu", "test2")
         stage_list = os.listdir(stage_dir)
@@ -398,7 +421,7 @@ if __name__ == '__main__':
     # 1 知乎 2 微博 3 头条 4 百度
 
     # 微博 「2，3，4，5，6，7，8，9」都有 ad
-    f = Foo(3)
+    f = Foo(4)
     ios_dir = os.path.join(f.TMP_IMG_DIR, "iOS")
     print(ios_dir)
     pic_dir_list = os.listdir(ios_dir)
@@ -406,7 +429,7 @@ if __name__ == '__main__':
     for pic_dir in pic_dir_list:
         if pic_dir.startswith("."):
             continue
-        if pic_dir != '13':
+        if pic_dir != '2':
             continue
         print(pic_dir)
         pic_dir_path = os.path.join(ios_dir, pic_dir)

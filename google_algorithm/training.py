@@ -122,18 +122,19 @@ import os.path
 import random
 import re
 import sys
+import json
 
 import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
-
-
 from tensorflow.python import saved_model
-from tensorflow.python.saved_model import tag_constants
 from tensorflow.python.saved_model.signature_def_utils_impl import predict_signature_def
 
+from app_config.config import JSON_TEXT_BROWSER_KEY, JSON_PID_KEY
+from msg_queue.queue_manager import QueueManager
+
 FLAGS = None
-TEXT_BROWSER = None
+SHARED_UI_MSG_QUEUE = None
 
 MAX_NUM_IMAGES_PER_CLASS = 2 ** 27 - 1  # ~134M
 
@@ -160,6 +161,7 @@ def create_image_lists(image_dir, testing_percentage, validation_percentage):
     split into training, testing, and validation sets within each label.
     The order of items defines the class indices.
   """
+  msg = {}
   if not tf.gfile.Exists(image_dir):
     tf.logging.error("Image directory '" + image_dir + "' not found.")
     return None
@@ -181,7 +183,13 @@ def create_image_lists(image_dir, testing_percentage, validation_percentage):
 
     if dir_name == image_dir:
       continue
-    tf.logging.info("Looking for images in '" + dir_name + "'")
+
+    looking_str = "Looking for images in '" + dir_name + "'"
+    msg[JSON_TEXT_BROWSER_KEY] = tuple(looking_str)
+    msg[JSON_PID_KEY] = os.getpid()
+    SHARED_UI_MSG_QUEUE.put(json.dumps(msg))
+    tf.logging.info(looking_str)
+
     for extension in extensions:
       file_glob = os.path.join(image_dir, dir_name, '*.' + extension)
       file_list.extend(tf.gfile.Glob(file_glob))
@@ -460,6 +468,7 @@ def cache_bottlenecks(sess, image_lists, image_dir, bottleneck_dir,
   Returns:
     Nothing.
   """
+  msg = {}
   how_many_bottlenecks = 0
   ensure_dir_exists(bottleneck_dir)
   for label_name, label_lists in list(image_lists.items()):
@@ -473,9 +482,11 @@ def cache_bottlenecks(sess, image_lists, image_dir, bottleneck_dir,
 
         how_many_bottlenecks += 1
         if how_many_bottlenecks % 100 == 0:
-          tf.logging.info(
-              str(how_many_bottlenecks) + ' bottleneck files created.')
-
+            bottleneck_str = str(how_many_bottlenecks) + " bottleneck files created."
+            msg[JSON_TEXT_BROWSER_KEY] = tuple(bottleneck_str)
+            msg[JSON_PID_KEY] = os.getpid()
+            SHARED_UI_MSG_QUEUE.put(json.dumps(msg))
+            tf.logging.info(bottleneck_str)
 
 def get_random_cached_bottlenecks(sess, image_lists, how_many, category,
                                   bottleneck_dir, image_dir, jpeg_data_tensor,
@@ -1007,6 +1018,7 @@ def logging_level_verbosity(logging_verbosity):
 def main(_):
   # Needed to make sure the logging output is visible.
   # See https://github.com/tensorflow/tensorflow/issues/3047
+  msg = {}
   logging_verbosity = logging_level_verbosity(FLAGS.logging_verbosity)
   tf.logging.set_verbosity(logging_verbosity)
 
@@ -1123,9 +1135,9 @@ def main(_):
         str2 = '%s: Step %d: Cross entropy = %f' % \
                         (datetime.now(), i, cross_entropy_value)
 
-        if TEXT_BROWSER:
-            TEXT_BROWSER.append(str1)
-            TEXT_BROWSER.append(str2)
+        msg[JSON_TEXT_BROWSER_KEY] = (str1, str2)
+        msg[JSON_PID_KEY] = os.getpid()
+        SHARED_UI_MSG_QUEUE.put(json.dumps(msg))
 
         tf.logging.info(str1)
         tf.logging.info(str2)
@@ -1148,8 +1160,8 @@ def main(_):
         str3 = '%s: Step %d: Validation accuracy = %.1f%% (N=%d)' % \
                         (datetime.now(), i, validation_accuracy * 100,
                          len(validation_bottlenecks))
-        if TEXT_BROWSER:
-            TEXT_BROWSER.append(str3)
+        msg[JSON_TEXT_BROWSER_KEY] = tuple(str3)
+        SHARED_UI_MSG_QUEUE.put(json.dumps(msg))
         tf.logging.info(str3)
 
       # Store intermediate results
@@ -1165,8 +1177,9 @@ def main(_):
 
         str4 = 'Save intermediate result to : ' + \
                         intermediate_file_name
-        if TEXT_BROWSER:
-            TEXT_BROWSER.append(str4)
+
+        msg[JSON_TEXT_BROWSER_KEY] = tuple(str4)
+        SHARED_UI_MSG_QUEUE.put(json.dumps(msg))
 
         tf.logging.info(str4)
         save_graph_to_file(intermediate_file_name, module_spec,
@@ -1185,10 +1198,8 @@ def main(_):
     # constants.
     str5 = 'Save final result to : ' + FLAGS.output_graph
 
-    if TEXT_BROWSER:
-        TEXT_BROWSER.append(str5)
-        TEXT_BROWSER.append("Training complete")
-
+    msg[JSON_TEXT_BROWSER_KEY] = (str5, "\n\nTraining complete")
+    SHARED_UI_MSG_QUEUE.put(json.dumps(msg))
     tf.logging.info(str5)
 
     if wants_quantization:
@@ -1200,19 +1211,18 @@ def main(_):
     if FLAGS.saved_model_dir:
       export_model2(module_spec, class_count, FLAGS.saved_model_dir)
 
-
-if __name__ == '__main__':
+def start_training(image_dir, output_graph, output_labels, test_app):
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--image_dir',
         type=str,
-        default='',
+        default=image_dir,
         help='Path to folders of labeled images.'
     )
     parser.add_argument(
         '--output_graph',
         type=str,
-        default='/tmp/output_graph.pb',
+        default=output_graph,
         help='Where to save the trained graph.'
     )
     parser.add_argument(
@@ -1233,7 +1243,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--output_labels',
         type=str,
-        default='/tmp/output_labels.txt',
+        default=output_labels,
         help='Where to save the trained graph\'s labels.'
     )
     parser.add_argument(
@@ -1313,7 +1323,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--bottleneck_dir',
         type=str,
-        default='/tmp/bottleneck',
+        default='/tmp/iOS/%s/bottleneck' % test_app,
         help='Path to cache bottleneck layer values as files.'
     )
     parser.add_argument(
@@ -1385,7 +1395,16 @@ if __name__ == '__main__':
         default='/tmp/_retrain_checkpoint',
         help='Where to save checkpoint files.'
     )
+    global FLAGS, SHARED_UI_MSG_QUEUE
 
+    QueueManager.register('get_queue')
+    manager = QueueManager(address=('localhost', QueueManager.SHARED_PORT), authkey=b'1234')
+    manager.connect()
+    SHARED_UI_MSG_QUEUE = manager.get_ui_msg_queue()
     FLAGS, unparsed = parser.parse_known_args()
     tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
+
+
+if __name__ == '__main__':
+    pass
 

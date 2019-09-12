@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
+
+
 import os
 import datetime
-import time
-import json
+
+from PyQt5.QtCore import QObject, pyqtSignal
 
 from google_algorithm.label_image import Classifier
-from msg_queue.queue_manager import QueueManager
 
 from app_config.config import ZHIHU_STAGE
 from app_config.config import WEIBO_STAGE
@@ -18,10 +19,6 @@ from app_config.config import TMP_IMG_TOP_TODAY_DIR
 from app_config.config import TMP_IMG_BAIDU_DIR
 from app_config.config import TMP_IMG_WEIBO_DIR
 
-from app_config.config import JSON_PROGRESS_BAR_KEY
-from app_config.config import JSON_TEXT_BROWSER_KEY
-from app_config.config import JSON_PID_KEY
-
 from app_config.config import ZHIHU_PERCENT
 from app_config.config import BAIDU_PERCENT
 from app_config.config import TOP_TODAY_PERCENT
@@ -32,36 +29,39 @@ from app_config.config import BAIDU_SORTED_STAGE
 from app_config.config import TOP_TODAY_SORTED_STAGE
 from app_config.config import WEIBO_SORTED_STAGE
 
-class CalTime(object):
-    def __init__(self, main_window, times_counter, test_app_code):
-        self.main_window = main_window
-        self.times_counter = times_counter
+import time
+import queue
+from app_config import config
+
+cpu_launch_time, cpu_loading_time = 0.0, 0.0
+man_launch_time, man_loading_time = 0.0, 0.0
+ccount = 0
+
+class Foo(QObject):
+    dt_signal = {}
+
+    def __init__(self, test_app_code):
+        super(Foo, self).__init__()
+        for k in Foo.__dict__:
+            if str(k).startswith("signal"):
+                # print(k)
+                # print(Foo.__dict__[k])
+                cmd = "self.%s.connect(self.trigger_slot)" % k
+                exec(cmd)
         self.cache = {}
-        self.progress = 0
-
         self.classifier = Classifier(test_app_code)
-
-        QueueManager.register('get_ui_msg_queue')
-        QueueManager.register('get_answer_queue')
-        QueueManager.register('get_task_status', callable=lambda: self.task_pid_status)
-
-        self.manager = QueueManager(address=('localhost', QueueManager.SHARED_PORT), authkey=b'1234')
-        self.manager.connect()
-        self.shared_ui_msg_queue = self.manager.get_ui_msg_queue()
-        self.shared_answer_queue = self.manager.get_answer_queue()
-        self.shared_task_status_dt = self.manager.get_task_status()
-
-        self.PID = os.getpid()
-        self.STAGE_PERCENT = ZHIHU_PERCENT
-        self.SORTED_STAGE = ZHIHU_SORTED_STAGE
+        self.bad_times = 0
 
         self.start_exist = False
         self.loading_exist = False
         self.end_exist = False
-
-        self.bad_times = 0
-
         self._test_app_adapter(test_app_code)
+        # QueueManager.register('get_queue_1')
+        # QueueManager.register('get_queue_2')
+        # self.manager = QueueManager(address=('localhost', 55677), authkey=b'1234')
+        # self.manager.connect()
+        # self.shared_queue_1 = self.manager.get_queue_1()
+        # self.shared_queue_2 = self.manager.get_queue_2()
 
     def _test_app_adapter(self, test_app_code):
         # 1 知乎 2 微博 3 头条 4 百度
@@ -89,6 +89,28 @@ class CalTime(object):
             self.TMP_IMG_DIR = TMP_IMG_BAIDU_DIR
             self.APP_STAGE = BAIDU_STAGE
 
+    def test_queue(self):
+        str1 = "from test1.shared_queue_1"
+        self.shared_queue_1.put(str1)
+
+        str2 = "from test1.shared_queue_2"
+        self.shared_queue_2.put(str2)
+
+        while True:
+            try:
+                recv = self.shared_queue_1.get_nowait()
+                print(recv)
+                break
+            except queue.Empty:
+                pass
+
+    def trigger_slot(self):
+        print(1)
+
+    def slot2(self):
+        print(2)
+
+    # todo 加入对广告的判断
     def upper_bound(self, pic_dir, pic_list, first, last, value, target_stage):
         '''
         求 pic_list 数组中 最后一个大于 value 的值的小标，即 [1,1,2,2,10,10,10,20], value = 10, 那么函数将返回下标 7，即最右边的那个 10 的下标 [first, last), 左闭右开
@@ -103,12 +125,10 @@ class CalTime(object):
         if last == 0:
             return -2
         z = 0
-        length = last + 1
         self.bad_times = 0
-        msg = {JSON_PROGRESS_BAR_KEY: None}
+        length = last + 1
         while first < last:
             z += 1
-            self.progress += 1
             mid_index = first + (last - first) // 2
             while True:
                 if self.cache.get(mid_index):
@@ -121,7 +141,47 @@ class CalTime(object):
                     break
                 else:
                     self.bad_times += 1
-                    # 当出现「坏图」的次数超过(包含) 5 次时，丢弃这批数据
+                    if self.bad_times >= 5:
+                        return -2
+                    if mid_index + 1 >= length:
+                        return length
+                    else:
+                        mid_index += 1
+
+            # 如果有「广告」则直接丢弃该批截图序列
+            if mid[0] == 'ad':
+                print('ad', pic_path)
+                return -1
+
+            if self.SORTED_STAGE[mid[0]] <= value:
+                first = mid_index + 1
+            else:
+                last = mid_index
+        print("upper_bound: z = %d" % z)
+
+        return first
+
+    # todo 加入对广告的判断
+    def lower_bound(self, pic_dir, pic_list, first, last, value, target_stage):
+        if last == 0:
+            return -2
+        z = 0
+        self.bad_times = 0
+        length = last
+        while first < last:
+            z += 1
+            mid_index = first + (last - first) // 2
+            while True:
+                if self.cache.get(mid_index):
+                    mid = self.cache[mid_index]
+                else:
+                    pic_path = os.path.join(pic_dir, pic_list[mid_index])
+                    mid = self.classifier.identify_pic(pic_path)
+                    self.cache[mid_index] = mid
+                if mid and mid[0] != 'bad':
+                    break
+                else:
+                    self.bad_times += 1
                     if self.bad_times >= 5:
                         return -2
                     if mid_index + 1 >= length:
@@ -133,55 +193,6 @@ class CalTime(object):
             if mid[0] == 'ad':
                 print('ad', pic_path)
                 return -1
-
-            msg[JSON_PROGRESS_BAR_KEY] = (self.times_counter, self.progress)
-            self.shared_ui_msg_queue.put(json.dumps(msg))
-            if self.SORTED_STAGE[mid[0]] <= value:
-                first = mid_index + 1
-            else:
-                last = mid_index
-        print("upper_bound: z = %d" % z)
-
-        return first
-
-    # todo 加入进度条代码
-    def lower_bound(self, pic_dir, pic_list, first, last, value, target_stage):
-        if last == 0:
-            return -2
-        z = 0
-        length = last
-        self.bad_times = 0
-        msg = {JSON_PROGRESS_BAR_KEY: None}
-        while first < last:
-            z += 1
-            self.progress += 1
-            mid_index = first + (last - first) // 2
-            while True:
-                if self.cache.get(mid_index):
-                    mid = self.cache[mid_index]
-                else:
-                    pic_path = os.path.join(pic_dir, pic_list[mid_index])
-                    mid = self.classifier.identify_pic(pic_path)
-                    self.cache[mid_index] = mid
-                if mid and mid[0] != 'bad':
-                    break
-                else:
-                    self.bad_times += 1
-                    # 当出现「坏图」的次数超过(包含) 5 次时，丢弃这批数据
-                    if self.bad_times >= 5:
-                        return -2
-                    if mid_index + 1 >= length:
-                        return length
-                    else:
-                        mid_index += 1
-
-            # 如果有「广告」或 「坏图」，则直接丢弃该批截图序列
-            if mid[0] == 'ad':
-                print('ad', pic_path)
-                return -1
-
-            msg[JSON_PROGRESS_BAR_KEY] = (self.times_counter, self.progress)
-            self.shared_ui_msg_queue.put(json.dumps(msg))
             if self.SORTED_STAGE[mid[0]] < value:
                 first = mid_index + 1
             else:
@@ -207,7 +218,6 @@ class CalTime(object):
         :param pic_dir:
         :return:
         '''
-
         length = len(pic_list)
         if pic_index < 0 or pic_index >= length:
             return -1, None
@@ -218,15 +228,14 @@ class CalTime(object):
         id_ret = self.classifier.identify_pic(pic_path)
         direction = -1 if target_stage == 'start' else 1
 
-        msg = {}
         while id_ret[0] != target_stage and 1 <= pic_index < length - 1:
             y += 1
-            self.progress += 1
             pic_index += direction
             pic_path = os.path.join(pic_dir, pic_list[pic_index])
             id_ret = self.classifier.identify_pic(pic_path)
-            msg[JSON_PROGRESS_BAR_KEY] = (self.times_counter, self.progress)
-            self.shared_ui_msg_queue.put(json.dumps(msg))
+            if id_ret[0] == 'ad':
+                print('check_precise： ', '有广告')
+                return -1, None
 
         if target_stage not in ('start', 'loading', 'end'):
             return pic_index, id_ret
@@ -236,11 +245,11 @@ class CalTime(object):
         prob = int(prob)
         last = None
 
+        # 先找出 prob >= target_precise
         while prob < target_precise and 1 <= pic_index < length - 1:
             y += 1
             pic_index += direction
             pic_path = os.path.join(pic_dir, pic_list[pic_index])
-            last = id_ret
             id_ret = self.classifier.identify_pic(pic_path)
             prob = round(id_ret[1], 4)
             prob *= 10000
@@ -248,7 +257,10 @@ class CalTime(object):
 
         print("check_precise: y = %d" % y)
 
-        return pic_index, id_ret
+        # if id_ret[0] != target_stage:
+        #     return pic_index - direction, last
+        # else:
+        return pic_index, id_ret if last is None else pic_index - 1, last
 
     def cal_time(self, pic_dir, exclude_list):
 
@@ -259,7 +271,6 @@ class CalTime(object):
         cur = time.time()
         ret = {}
         counter = 0
-
         for st in self.APP_STAGE:
             ret[st] = (-1, None, None)
 
@@ -271,36 +282,33 @@ class CalTime(object):
         length = len(pic_list)
         summary = "文件夹 %s 总共包含 %d 张图片" % (os.path.basename(pic_dir), length)
         print(summary)
-        msg = {}
         self.cache.clear()
         for stage in self.SORTED_STAGE:
             if stage in exclude_list:
                 continue
             search_method = self.upper_bound if stage == 'start' else self.lower_bound
             is_upper_bound = True if stage == 'start' else False
+            # 通过 logo 算 start ，loading、end 阶段通过求 lower_bound 计算
             bound_index = search_method(pic_dir, pic_list, 0, length, self.SORTED_STAGE[stage], stage)
 
             if self._handle_ad_and_bad(bound_index):
                 return
 
-            # 用 'logo' 找 'start'
             if stage == 'logo':
                 stage = 'start'
             search_result = self._check_precise(bound_index, pic_list, pic_dir, is_upper_bound, stage)
             if not self._check_result(is_upper_bound, search_result, length):
-                error_str = "文件夹 %d: %s 阶段不存在" % (self.times_counter, stage)
-                print(error_str)
-                msg[JSON_TEXT_BROWSER_KEY] = tuple(error_str)
-                msg[JSON_PID_KEY] = self.PID
-                self.shared_ui_msg_queue.put(json.dumps(msg))
+                print("%s 阶段不存在" % stage)
                 ret[stage] = (-1, None, None)
-                # self.shared_answer_queue.put((0, 0))
-                # self.shared_task_status_dt.update({self.PID: True})
-                # return
             else:
                 index = search_result[0] - 1 if is_upper_bound else search_result[0]
                 pic_path = os.path.join(pic_dir, pic_list[index])
                 ret[stage] = (self.get_create_time(pic_list[index]), pic_path, search_result[1])
+
+        global ccount
+        ccount += 1
+        print(ret)
+        print()
 
         if ret['start'][0] != -1:
             self.start_exist = True
@@ -311,7 +319,7 @@ class CalTime(object):
         if ret['end'][0] != -1:
             self.end_exist = True
 
-        # 计算启动时长和首页加载时长
+        # 计算启动时长 和 Task 平均时长
         launch_time = 0
         home_page_loading_time = 0
         if self.start_exist:
@@ -330,23 +338,49 @@ class CalTime(object):
             launch_time = 0
             home_page_loading_time = 0
 
-        str2 = "文件夹 %d: App 启动时长：%.3fs   App 首页加载时长：%.3fs " % (self.times_counter, launch_time, home_page_loading_time)
-        print(str2)
+        # self.result_queue.put((launch_time, home_page_loading_time))
+        str2 = "App 启动时长：%.3fs   App 首页加载时长：%.3fs" % (launch_time, home_page_loading_time)
 
+        for k in ret:
+            print(k, ret[k])
+
+        print(str2)
         now = time.time()
         interval = now - cur
-        total_time = "\n文件夹 %d 总共计算耗时: %ds" % (self.times_counter, interval)
-        print(total_time)
+        print("总共计算耗时: %ds" % interval)
 
-        max_value = self.main_window.cal_progress_dialog.ui.progress_bar_dt[self.times_counter].maximum()
+        for k in ret:
+            if ret[k] == -1:
+                continue
+            # d = os.path.basename(pic_dir)
+            # human_value_list = config.HUMAN[d][k]
+            # ts = human_value_list[0]
+            # missing = int(abs(self.get_create_time(ts)*10**6 - ret[k][0]*10**6)/1000)
+            # sss = "%s: %s 误差：%d ms 概率：%.8f" % (k, human_value_list[0], missing, human_value_list[-1])
+            # print(sss)
+        d = os.path.basename(pic_dir)
+        # human_value_list = config.HUMAN[d]['app']
+        # sss = "App 启动时长：%.3fs  App 首页加载时长：%.3fs(loading -> end)" \
+        #     % (human_value_list[0], human_value_list[1])
+        # print(sss)
 
-        msg[JSON_PROGRESS_BAR_KEY] = (self.times_counter, max_value)
-        msg[JSON_TEXT_BROWSER_KEY] = (str2, total_time)
-        msg[JSON_PID_KEY] = self.PID
-        self.shared_ui_msg_queue.put(json.dumps(msg))
+        global cpu_launch_time, cpu_loading_time, man_launch_time, man_loading_time
+        cpu_launch_time += (int(launch_time * 10**3))
+        cpu_loading_time += (int(home_page_loading_time * 10**3))
 
-        self.shared_task_status_dt.update({self.PID:True})
-        self.shared_answer_queue.put((launch_time, home_page_loading_time))
+        # man_launch_time += (int(human_value_list[0] * 10**3))
+        # man_loading_time += (int(human_value_list[1] * 10**3))
+
+        # print("######计算时长对比#######")
+        # diff_1 = abs(int(launch_time * 10**3) - int(human_value_list[0] * 10**3))
+        # diff_2 = abs(int(home_page_loading_time * 10**3) - int(human_value_list[1] * 10**3))
+        # print("启动时长误差：%d ms   首页加载时长误差：%d ms" % (diff_1, diff_2))
+
+    def get_create_time(self, filename):
+        fn, ext = os.path.splitext(filename)
+        d = datetime.datetime.strptime(fn, "%Y-%m-%d_%H-%M-%S-%f")
+        ts = datetime.datetime.timestamp(d)
+        return ts
 
     def _handle_ad_and_bad(self, bound_index):
         if bound_index >= 0:
@@ -361,20 +395,78 @@ class CalTime(object):
             print(bad_str)
 
         exception_str = ad_str if ad_str else bad_str
-
-        msg = {}
-        max_value = self.main_window.cal_progress_dialog.ui.progress_bar_dt[self.times_counter].maximum()
-
-        msg[JSON_PROGRESS_BAR_KEY] = (self.times_counter, max_value)
-        msg[JSON_TEXT_BROWSER_KEY] = tuple(exception_str)
-        msg[JSON_PID_KEY] = self.PID
-        self.shared_ui_msg_queue.put(json.dumps(msg))
-        self.shared_task_status_dt.update({self.PID: True})
+        print(exception_str)
         return True
 
-    @staticmethod
-    def get_create_time(filename):
-        fn, ext = os.path.splitext(filename)
-        d = datetime.datetime.strptime(fn, "%Y-%m-%d_%H-%M-%S-%f")
-        ts = datetime.datetime.timestamp(d)
-        return ts
+    def test2(self):
+        stage_dir = os.path.join(config.ABOUT_TRAINING, "zhihu", "test2")
+        stage_list = os.listdir(stage_dir)
+        stage_list.sort()
+        for s in stage_list:
+            if s.startswith("."):
+                continue
+            print(s)
+            path_stage = os.path.join(stage_dir, s)
+            pic_list = os.listdir(path_stage)
+            pic_list.sort()
+            for pic in pic_list:
+                if pic.startswith("."):
+                    continue
+                path_pic = os.path.join(path_stage, pic)
+                ret = self.classifier.identify_pic(path_pic)
+                print(pic, ret)
+            print("------------")
+
+if __name__ == '__main__':
+    # 1 知乎 2 微博 3 头条 4 百度
+
+    # 微博 「2，3，4，5，6，7，8，9」都有 ad
+    f = Foo(4)
+    ios_dir = os.path.join(f.TMP_IMG_DIR, "iOS")
+    print(ios_dir)
+    pic_dir_list = os.listdir(ios_dir)
+    pic_dir_list.sort()
+    for pic_dir in pic_dir_list:
+        if pic_dir.startswith("."):
+            continue
+        if pic_dir != '2':
+            continue
+        print(pic_dir)
+        pic_dir_path = os.path.join(ios_dir, pic_dir)
+        f.cal_time(pic_dir_path, config.EXCLUDED_LIST)
+        print("################")
+        print()
+
+    # cpu_launch_time = cpu_launch_time // ccount if ccount != 0 else 0
+    # cpu_loading_time = cpu_loading_time // ccount if ccount != 0 else 0
+    #
+    # man_launch_time = man_launch_time // ccount if ccount != 0 else 0
+    # man_loading_time = man_loading_time // ccount if ccount != 0 else 0
+    #
+    # print("平均启动时长误差：%d ms    平均首页加载时长误差: %d ms" % (abs(cpu_launch_time - man_launch_time), abs(cpu_loading_time - man_loading_time)))
+    # start = f.get_create_time("2019-08-16_17-47-15-792374")
+    # loading = f.get_create_time("2019-08-16_17-47-18-528193")
+    # end = f.get_create_time("2019-08-16_17-47-19-860089")
+
+    # print("start -> loading: ", loading - start)
+    # print("loading -> end: ", end - loading)
+
+    # pic_dir = "/Users/bughh/PycharmProjects/iOSAppTime/training/top_today/test/"
+    # id_dir = "end"
+    # temp = os.path.join(pic_dir, id_dir)
+    # # print(os.path.basename(temp))
+    # pic_name = "test-end-4.jpg"
+    # pic_path = os.path.join(pic_dir, id_dir, pic_name)
+    # # t1 = time.time()
+    # classifier = Classifier(3)
+    # ret = classifier.identify_pic(pic_path)
+    # print(ret)
+    # t2 = time.time()
+    # print(t2 - t1)
+    # f = Foo()
+    # f.test2()
+
+
+# todo 1、先用带有 check_precise 跑一次所有的文件夹，其中 check_precise 只包含 「while id_ret[0] != target_stage and pic_index < length」 的情况
+# todo 2、再用带有 check_precise 跑一次所有的文件夹，其中 check_precise 包含 「while id_ret[0] != target_stage and pic_index < length」和 「while prob < target_precise and pic_index < length」的情况
+# todo 3、再用不带 check_precise 跑一次所有的文件夹

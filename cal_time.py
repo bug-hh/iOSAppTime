@@ -21,6 +21,7 @@ from app_config.config import TMP_IMG_WEIBO_DIR
 from app_config.config import JSON_PROGRESS_BAR_KEY
 from app_config.config import JSON_TEXT_BROWSER_KEY
 from app_config.config import JSON_PID_KEY
+from app_config.config import JSON_ANSWER_KEY
 
 from app_config.config import ZHIHU_PERCENT
 from app_config.config import BAIDU_PERCENT
@@ -42,14 +43,14 @@ class CalTime(object):
         self.classifier = Classifier(test_app_code)
 
         QueueManager.register('get_ui_msg_queue')
-        QueueManager.register('get_answer_queue')
-        QueueManager.register('get_task_status', callable=lambda: self.task_pid_status)
+        # QueueManager.register('get_answer_queue')
+        # QueueManager.register('get_task_status')
 
         self.manager = QueueManager(address=('localhost', QueueManager.SHARED_PORT), authkey=b'1234')
         self.manager.connect()
         self.shared_ui_msg_queue = self.manager.get_ui_msg_queue()
-        self.shared_answer_queue = self.manager.get_answer_queue()
-        self.shared_task_status_dt = self.manager.get_task_status()
+        # self.shared_answer_queue = self.manager.get_answer_queue()
+        # self.shared_task_status_dt = self.manager.get_task_status()
 
         self.PID = os.getpid()
         self.STAGE_PERCENT = ZHIHU_PERCENT
@@ -343,10 +344,11 @@ class CalTime(object):
         msg[JSON_PROGRESS_BAR_KEY] = (self.times_counter, max_value)
         msg[JSON_TEXT_BROWSER_KEY] = (str2, total_time)
         msg[JSON_PID_KEY] = self.PID
+        msg[JSON_ANSWER_KEY] = (launch_time, home_page_loading_time)
         self.shared_ui_msg_queue.put(json.dumps(msg))
 
-        self.shared_task_status_dt.update({self.PID:True})
-        self.shared_answer_queue.put((launch_time, home_page_loading_time))
+        # self.shared_task_status_dt.update({self.PID:True})
+        # self.shared_answer_queue.put((launch_time, home_page_loading_time))
 
     def _handle_ad_and_bad(self, bound_index):
         if bound_index >= 0:
@@ -368,8 +370,9 @@ class CalTime(object):
         msg[JSON_PROGRESS_BAR_KEY] = (self.times_counter, max_value)
         msg[JSON_TEXT_BROWSER_KEY] = tuple(exception_str)
         msg[JSON_PID_KEY] = self.PID
+        msg[JSON_ANSWER_KEY] = (0, 0)
         self.shared_ui_msg_queue.put(json.dumps(msg))
-        self.shared_task_status_dt.update({self.PID: True})
+        # self.shared_task_status_dt.update({self.PID: True})
         return True
 
     @staticmethod

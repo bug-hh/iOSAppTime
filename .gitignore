@@ -41,12 +41,24 @@ app/
 # backup
 backup/
 
-# other
-# other/
+# app_debug
+app_debug
 
 # about training
-training/
-*.pb
+training/baidu/ad
+training/baidu/iOS_1-50
+training/baidu/test
+
+training/top_today/test
+training/top_today/iOS_1-50
+training/top_today/note.txt
+
+training/weibo/test
+training/weibo/iOS_1-50
+
+training/zhihu/iOS_1-50
+training/zhihu/loading
+
 
 # pyc
 *.pyc
@@ -61,7 +73,6 @@ __pycache__/
 build/
 local.properties
 
-*.txt
 record.sh
 
 out/

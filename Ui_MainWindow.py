@@ -32,6 +32,7 @@ from app_config.config import JSON_PROGRESS_BAR_KEY
 from app_config.config import JSON_TEXT_BROWSER_KEY
 from app_config.config import JSON_PID_KEY
 from app_config.config import JSON_PROGRESS_DIALOG_CLOSE
+from app_config.config import JSON_ANSWER_KEY
 
 from app_config.config import iOS_ZHIHU_MODEL_NAME
 from app_config.config import iOS_TOP_TODAY_MODEL_NAME
@@ -74,6 +75,8 @@ class Ui_MainWindow(QtCore.QObject):
 
         self.minicap = None
         self.task_process_dt = {}
+        self.cal_process_ls = []
+        self.answer_dt = {}
 
     def setupUi(self, MainWindow):
         self.DEBUG = False
@@ -198,22 +201,21 @@ class Ui_MainWindow(QtCore.QObject):
 
         self.queue = Queue()
         self.ui_msg_queue = Queue()
-        self.answer_queue = Queue()
-
-        self.task_pid_status = {}
+        # self.answer_queue = Queue()
+        # self.task_pid_status = {}
 
         QueueManager.register('get_queue', callable=lambda : self.queue)
         QueueManager.register('get_ui_msg_queue', callable=lambda : self.ui_msg_queue)
-        QueueManager.register('get_answer_queue', callable=lambda : self.answer_queue)
-        QueueManager.register('get_task_status', callable=lambda : self.task_pid_status)
+        # QueueManager.register('get_answer_queue', callable=lambda : self.answer_queue)
+        # QueueManager.register('get_task_status', callable=lambda : self.task_pid_status)
 
         self.manager = QueueManager(address=('localhost', QueueManager.SHARED_PORT), authkey=b'1234')
         self.manager.start()
 
         self.shared_queue = self.manager.get_queue()
         self.shared_ui_msg_queue = self.manager.get_ui_msg_queue()
-        self.shared_answer_queue = self.manager.get_answer_queue()
-        self.shared_task_status_dt = self.manager.get_task_status()
+        # self.shared_answer_queue = self.manager.get_answer_queue()
+        # self.shared_task_status_dt = self.manager.get_task_status()
 
         if self.DEBUG:
             self.start_screenshot_button.setEnabled(False)
@@ -242,6 +244,9 @@ class Ui_MainWindow(QtCore.QObject):
         self.model_path = os.path.join(ABOUT_TRAINING, self.TEST_APP, "model", self.IOS_MODEL_NAME)
         self.WAIT_TIME = 4 # SECONDS
         self.percent = 100 // self.WAIT_TIME
+        
+        self.task_process_1 = None
+        self.task_process_2 = None
 
     def start_update_ui_thread(self):
         self.ui_update_thread = Thread(target=self._update_ui)
@@ -252,6 +257,7 @@ class Ui_MainWindow(QtCore.QObject):
         data_browser = ""
         data_progress = ""
         data_pid = ""
+        data_answer = ""
         while True:
             try:
                 if not self.ios_version_flag:
@@ -270,16 +276,64 @@ class Ui_MainWindow(QtCore.QObject):
                         data_pid = msg[key]
                     elif key == JSON_PROGRESS_DIALOG_CLOSE:
                         self.cal_progress_dialog.close()
+                    elif key == JSON_ANSWER_KEY:
+                        data_answer = msg[key]
+
                 if data_browser:
                     self._update_info(data_browser, data_pid)
+                    data_browser = ""
                 if data_progress:
                     self._update_progress(data_progress)
+                    data_progress = ""
+                if data_answer:
+                    self._update_answer_dt(data_pid, data_answer[0], data_answer[1])
+                    data_answer = ""
+
             except queue.Empty:
                 data_browser = None
                 pass
             except ConnectionResetError:
                 print("connection has been reset")
                 return
+
+    def _update_answer_dt(self, pid, launch_time, page_loading_time):
+        self.answer_dt[pid] = (launch_time, page_loading_time)
+        if len(self.answer_dt) == len(self.search_price_dt) and len(self.search_price_dt) > 0:
+            launch_time_ls = []
+            loading_time_ls = []
+            for pid in self.answer_dt:
+                app_launch_time, loading_time = self.answer_dt[pid]
+                if app_launch_time > 0:
+                    launch_time_ls.append(int(launch_time * 1000))
+                if loading_time > 0:
+                    loading_time_ls.append(int(loading_time * 1000))
+
+            launch_time_ls.sort()
+            loading_time_ls.sort()
+
+            len1 = len(launch_time_ls)
+            len2 = len(loading_time_ls)
+
+            if len1 > 2:
+                aver_launch_time = 1.0 * sum(launch_time_ls[1:-1]) / (len1 - 2)
+            else:
+                aver_launch_time = 0
+
+            if len2 > 2:
+                aver_home_page_loading_time = 1.0 * sum(loading_time_ls[1:-1]) / (len2 - 2)
+            else:
+                aver_home_page_loading_time = 0
+
+            aver_launch_time /= 1000
+            aver_home_page_loading_time /= 1000
+
+            msg = {}
+            str_aver = "平均启动时长：%.3f  平均加载时长: %.3f" % (aver_launch_time, aver_home_page_loading_time)
+            self._update_info(str_aver, os.getpid())
+            print(str_aver)
+            # msg[JSON_PROGRESS_DIALOG_CLOSE] = True
+            # msg[JSON_TEXT_BROWSER_KEY] = str_aver
+            # msg[JSON_PID_KEY] = os.getpid()
 
     def _update_info(self, data_browser, pid):
         self.signal_training_progress.emit("pid %d - %s" % (pid, ''.join(data_browser)))
@@ -360,82 +414,32 @@ class Ui_MainWindow(QtCore.QObject):
         i = 0
         flag_1 = False
         flag_2 = False
-        length = len(self.search_price_dt)
-        finished_list = []
+        # length = len(self.search_price_dt)
+        # finished_list = []
+        local_answer_dt = {}
+        temp_times_list = times_list.copy()
+        while len(temp_times_list) > 0:
 
-        while i < length:
-            if not flag_1 and i < length:
-                pictures_dir_1 = os.path.join(screenshots_dir, str(times_list[i]))
-                task_process_1 = Process(target=self._cal_time, args=(pictures_dir_1, times_list[i]))
-                task_process_1.start()
-                self.shared_task_status_dt.setdefault(task_process_1.pid, False)
-                flag_1 = True
-                i += 1
+            if not self.task_process_1 or not self.task_process_1.is_alive():
+                if len(temp_times_list) > 0:
+                    num = temp_times_list.pop(0)
+                    pictures_dir_1 = os.path.join(screenshots_dir, str(num))
+                    self.task_process_1 = Process(target=self._cal_time, args=(pictures_dir_1, num))
+                    self.task_process_1.start()
+                    local_answer_dt[self.task_process_1.pid] = None
+                    self.answer_dt[self.task_process_1.pid] = None
+                    flag_1 = True
 
-            if not flag_2 and i < length:
-                pictures_dir_2 = os.path.join(screenshots_dir, str(times_list[i]))
-                task_process_2 = Process(target=self._cal_time, args=(pictures_dir_2, times_list[i]))
-                task_process_2.start()
-                self.shared_task_status_dt.setdefault(task_process_2.pid, False)
-                flag_2 = True
-                i += 1
-
-            status1 = self.shared_task_status_dt.get(task_process_1.pid)
-            if status1 and task_process_1.pid not in finished_list:
-                finished_list.append(task_process_1.pid)
-                flag_1 = False
-
-            status2 = self.shared_task_status_dt.get(task_process_2.pid)
-            if status2 and task_process_2.pid not in finished_list:
-                finished_list.append(task_process_2.pid)
-                flag_2 = False
-
-        while True:
-            is_all_finished = True
-            for status in self.shared_task_status_dt.values():
-                is_all_finished = is_all_finished and status
-            if is_all_finished:
-                break
-
-        # 最终结果去掉一个最小值和一个最大值，再计算平均值
-        launch_time_ls = []
-        loading_time_ls = []
-
-        while True:
-            try:
-                launch_time, loading_time = self.shared_answer_queue.get_nowait()
-                if launch_time > 0:
-                    launch_time_ls.append(int(launch_time * 1000))
-                if loading_time > 0:
-                    loading_time_ls.append(int(loading_time * 1000))
-            except queue.Empty:
-                break
-
-        launch_time_ls.sort()
-        loading_time_ls.sort()
-        len1 = len(launch_time_ls)
-        len2 = len(loading_time_ls)
-
-        if len1 > 2:
-            aver_launch_time = 1.0 * sum(launch_time_ls[1:-1]) / (len1 - 2)
-        else:
-            aver_launch_time = 0
-
-        if len2 > 2:
-            aver_home_page_loading_time = 1.0 * sum(loading_time_ls[1:-1]) / (len2 - 2)
-        else:
-            aver_home_page_loading_time = 0
-
-        aver_launch_time /= 1000
-        aver_home_page_loading_time /= 1000
-
-        msg = {}
-        str_aver = "平均启动时长：%.3f  平均加载时长: %.3f" %(aver_launch_time , aver_home_page_loading_time)
-        # msg[JSON_PROGRESS_DIALOG_CLOSE] = True
-        msg[JSON_TEXT_BROWSER_KEY] = str_aver
-        msg[JSON_PID_KEY] = os.getpid()
-        self.shared_ui_msg_queue.put(json.dumps(msg))
-        print(str_aver)
+            # 去掉下面注释，则同时开启两个计算进程
+            # if not self.task_process_2 or not self.task_process_2.is_alive():
+            #     if len(temp_times_list) > 0:
+            #         num = temp_times_list.pop(0)
+            #         pictures_dir_2 = os.path.join(screenshots_dir, str(num))
+            #         self.task_process_2 = Process(target=self._cal_time, args=(pictures_dir_2, num))
+            #         self.task_process_2.start()
+            #         local_answer_dt[self.task_process_2.pid] = None
+            #         self.answer_dt[self.task_process_2.pid] = None
+            #         flag_2 = True
 
     def _update_cal_status(self, content):
         self.textBrowser.append(content)
@@ -521,6 +525,8 @@ class Ui_MainWindow(QtCore.QObject):
         self.cal_progress_dialog.show()
         cal_process = Process(target=self._dispatch_cal_task)
         cal_process.start()
+        self.cal_process_ls.append(cal_process.pid)
+        print("cal_process pid: %d" % cal_process.pid)
 
     def on_click_training_button(self):
         # 弹出一个对话框，让用户选择训练图片文件夹，pb 和 label 文件不用指定路径，存放在默认路径
@@ -677,6 +683,7 @@ class Ui_MainWindow(QtCore.QObject):
         '''
         cmd = "ideviceinstaller -l -o list_user"
         fobj = os.popen(cmd)
+
         ls = ["None"]
         for line in fobj:
             if line.strip().find("baidu") != -1:
@@ -688,5 +695,6 @@ class Ui_MainWindow(QtCore.QObject):
             elif line.strip().find("article") != -1:
                 ls.append("今日头条")
 
-        self.app_version_flag = True if len(ls) > 0 else False
+        self.app_version_flag = True if len(ls) > 1 else False
+
         return ls

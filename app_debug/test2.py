@@ -67,8 +67,10 @@ class Eoo(object):
         return status == "(LISTEN)", pid
 
 if __name__ == '__main__':
-    e = Eoo()
-    p = Process(target=e.task)
-    p.start()
-    p.join()
-    e.update_task()
+    dt = {}
+    if 'a' in dt.keys():
+        print(dt.get('a'))
+    else:
+        print("not contains a")
+    dt['a'] = 1
+    print(dt['a'])

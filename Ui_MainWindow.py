@@ -68,6 +68,7 @@ class Ui_MainWindow(QtCore.QObject):
         self.test_app_name = "知乎"
         self.test_app_code = 1
         self.TEST_APP = "zhihu"
+        self.LAST_APP = ""
 
         self.IOS_MODEL_NAME = iOS_ZHIHU_MODEL_NAME
         self.IOS_LABEL_NAME = iOS_ZHIHU_LABEL_NAME
@@ -228,7 +229,7 @@ class Ui_MainWindow(QtCore.QObject):
             self.cal_button.setEnabled(False)
             self.training_button.setEnabled(False)
 
-        self.times = 1
+        self.times = 0
 
         self.fileDialog = None
 
@@ -328,7 +329,8 @@ class Ui_MainWindow(QtCore.QObject):
             aver_home_page_loading_time /= 1000
 
             msg = {}
-            str_aver = "平均启动时长：%.3f  平均加载时长: %.3f" % (aver_launch_time, aver_home_page_loading_time)
+            str_aver = "平均启动时长：%.3f" % (aver_launch_time)
+            # str_aver = "平均启动时长：%.3f  平均加载时长: %.3f" % (aver_launch_time, aver_home_page_loading_time)
             self._update_info(str_aver, os.getpid())
             print(str_aver)
             # msg[JSON_PROGRESS_DIALOG_CLOSE] = True
@@ -522,7 +524,7 @@ class Ui_MainWindow(QtCore.QObject):
         self.textBrowser.clear()
         self.textBrowser.append("正在启动计算进程")
         self._setup_qt_signal()
-        self.cal_progress_dialog.show()
+        # self.cal_progress_dialog.show()
         cal_process = Process(target=self._dispatch_cal_task)
         cal_process.start()
         self.cal_process_ls.append(cal_process.pid)
@@ -594,6 +596,11 @@ class Ui_MainWindow(QtCore.QObject):
 
         # 当用户选好「被测 APP」后，打开「开始截图」「一键训练」按钮
         if self.test_app_name != "None":
+            if self.LAST_APP == "":
+                self.LAST_APP = self.TEST_APP
+            else:
+                if self.LAST_APP != self.TEST_APP:
+                    self.times = 0
             self.start_screenshot_button.setEnabled(True)
             self.training_button.setEnabled(True)
             self.cal_button.setEnabled(True)

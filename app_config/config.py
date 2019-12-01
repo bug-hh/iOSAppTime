@@ -51,7 +51,7 @@ TOP_TODAY_SORTED_STAGE = {'start': 1, 'logo': 2, 'ad': 3, 'loading': 4, 'end': 5
 WEIBO_SORTED_STAGE = {'start': 1, 'logo': 2, 'ad': 3, 'loading': 4, 'end': 5}
 
 # 用 'logo' 找 start
-EXCLUDED_LIST = ['start', 'ad']
+EXCLUDED_LIST = ['ad', 'logo', 'words', 'end', 'home']
 
 # GUI Message Key
 JSON_MINICAP_KEY = 'MINICAP'

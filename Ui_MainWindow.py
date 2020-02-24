@@ -188,9 +188,10 @@ class Ui_MainWindow(QtCore.QObject):
         self.ios_version_flag = False
         self.app_version_flag = False
 
-
+        # 毫秒
+        self.interval = 200
         self.CLOCK = QTimer()
-        self.CLOCK.setInterval(1000)
+        self.CLOCK.setInterval(self.interval)
         self.CLOCK.timeout.connect(self._count_down)
 
         self.TRAINING_CLOCK = QTimer()
@@ -198,7 +199,6 @@ class Ui_MainWindow(QtCore.QObject):
         self.TRAINING_CLOCK.timeout.connect(self._training_count_down)
 
         self.i = 0
-
 
         self.queue = Queue()
         self.ui_msg_queue = Queue()
@@ -243,9 +243,9 @@ class Ui_MainWindow(QtCore.QObject):
         self.remind_user = True
         self.training_pic_dir = os.path.join(ABOUT_TRAINING, self.TEST_APP, "iOS_1-50")
         self.model_path = os.path.join(ABOUT_TRAINING, self.TEST_APP, "model", self.IOS_MODEL_NAME)
-        self.WAIT_TIME = 4 # SECONDS
-        self.percent = 100 // self.WAIT_TIME
-        
+
+        self.WAIT_TIME = 5 # TIMES 次数
+
         self.task_process_1 = None
         self.task_process_2 = None
 
@@ -329,8 +329,8 @@ class Ui_MainWindow(QtCore.QObject):
             aver_home_page_loading_time /= 1000
 
             msg = {}
-            str_aver = "平均启动时长：%.3f" % (aver_launch_time)
-            # str_aver = "平均启动时长：%.3f  平均加载时长: %.3f" % (aver_launch_time, aver_home_page_loading_time)
+            # str_aver = "平均启动时长：%.3f" % (aver_launch_time)
+            str_aver = "平均启动时长：%.3f  平均加载时长: %.3f" % (aver_launch_time, aver_home_page_loading_time)
             self._update_info(str_aver, os.getpid())
             print(str_aver)
             # msg[JSON_PROGRESS_DIALOG_CLOSE] = True
@@ -397,7 +397,7 @@ class Ui_MainWindow(QtCore.QObject):
         self.minicap.run()
         self.shared_queue.put(self.times)
         self.textBrowser.append("第 %d 次截图开始" % self.times)
-        self.textBrowser.append("请等待 %d s，再点击 app 截图" % self.WAIT_TIME)
+        self.textBrowser.append("请等待 %d s，再点击 app 截图" % int(self.interval * self.WAIT_TIME / 1000))
         self.stop_screenshot_button.setEnabled(True)
         self.times += 1
 
@@ -493,7 +493,7 @@ class Ui_MainWindow(QtCore.QObject):
     def on_click_minicap_button(self):
         # 首先查询 ios-minicap 的状态，如果状态不是 listen，则重新启动
         self._checkout_ios_minicap()
-        self.textBrowser.append("正在启动 ios-minicap，请等待 %d s，再开始操作" % self.WAIT_TIME)
+        self.textBrowser.append("正在启动 ios-minicap，请等待 %d s，再开始操作" % int(self.interval * self.WAIT_TIME // 1000))
         # 添加一个 dialog，倒数 self.WAIT_TIME s,倒数 self.WAIT_TIME s 后，显示启动成功
         self._startup_progress_dialog("Waiting for ios-minicap", self.WAIT_TIME, True, self.CLOCK)
         self.start_screenshot_button.setEnabled(True)
@@ -636,7 +636,7 @@ class Ui_MainWindow(QtCore.QObject):
         self.progressDialog.setFixedWidth(500)
         self.progressDialog.setAutoClose(True)
         self.progressDialog.setModal(is_modal)
-        para_clock.start(max_num * 1000)
+        para_clock.start(max_num * self.interval)
 
     def _training_count_down(self):
         self.progressDialog.setValue(self.i + 1)
@@ -647,14 +647,15 @@ class Ui_MainWindow(QtCore.QObject):
             self.i = 0
 
     def _count_down(self):
-        self.progressDialog.setValue(self.i + 1)
-        self.progressDialog.setLabelText("Waiting for ios-minicap: %d%%" % (self.percent))
-        self.percent += (100 // self.WAIT_TIME)
         self.i += 1
+        self.progressDialog.setValue(self.i)
+        self.progressDialog.setLabelText("Waiting for ios-minicap: %d%%" % int(self.i / self.WAIT_TIME * 100))
+
         if self.i == self.WAIT_TIME:
             self.CLOCK.stop()
             self.i = 0
-            self.percent = 100 // self.WAIT_TIME
+            msg = {JSON_TEXT_BROWSER_KEY: "可以点击 App 截图了", JSON_PID_KEY: os.getpid()}
+            self.shared_ui_msg_queue.put(json.dumps(msg))
 
     @staticmethod
     def query_service(port):

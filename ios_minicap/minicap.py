@@ -6,6 +6,7 @@ import socket
 import threading
 import shutil
 import queue
+import time
 
 from ios_minicap.banner import Banner
 from datetime import datetime
@@ -34,7 +35,7 @@ class MinicapStream(object):
         self.GLOBAL_HEADER_LENGTH = 24
         self.FRAME_HEADER_LENGTH = 4
         self.buffer = None
-        self.platform = "iOS"
+        self.platform = "iOS" if port == 33333 else "Android"
         self.index = 0
         self.frame_size = 0
         self.connectInfo = False
@@ -103,6 +104,7 @@ class MinicapStream(object):
         # 开始执行
         # 启动socket连接
         self._connect_to_minicap()
+        print("连接 minicap 成功")
         read_banner_bytes = 0
         banner_length = 2
         read_frame_bytes = 0
@@ -115,6 +117,7 @@ class MinicapStream(object):
             if self.times > 0:
                 break
 
+        print("开始截图")
         self._create_picture_dir()
 
         while True:
@@ -125,10 +128,14 @@ class MinicapStream(object):
                 if temp > 0:
                     self.times = temp
                     self._create_picture_dir()
+                    status, pid = query_socket(self.port)
+                    if not status:
+                        self._connect_to_minicap()
                     break
                 elif temp == -2:
                     self._disconnect_from_minicap()
                     return
+
 
             # signal == -2 响应终止套接字
             if self._get_signal() == -2:
@@ -136,10 +143,11 @@ class MinicapStream(object):
 
             reallen = self.minicap_socket.recv(self.port)
             length = len(reallen)
+
             if not length:
                 continue
+            print(length)
             cursor = 0
-
             # cursor < length，存在未处理数据
             while cursor < length:
                 # Banner 信息，位置 0-23
@@ -201,7 +209,17 @@ class MinicapStream(object):
         self._disconnect_from_minicap()
 
     def _connect_to_minicap(self):
-        self.minicap_socket.connect((self.ip, self.port))
+        status, pid = query_service(self.port)
+
+        while not status:
+            print("正在等待 minicap 初始化完成")
+            status, pid = query_service(self.port)
+
+        code = self.minicap_socket.connect_ex((self.ip, self.port))
+
+        if code != 0:
+            print(self.ip, self.port)
+            print("连接 minicap 套接字失败")
 
     def _disconnect_from_minicap(self):
         self.minicap_socket.shutdown(2)
@@ -218,6 +236,38 @@ class MinicapStream(object):
         now = datetime.now()
         file_name = now.strftime("%Y-%m-%d_%H-%M-%S-%f")
         return file_name + ".jpg"
+
+def query_socket(port):
+    fobj = os.popen("lsof -i tcp:%d" % port)
+    state = fobj.read().strip()
+    if len(state) == 0:
+        return False, -1
+    ls = state.split("\n")
+    ls.reverse()
+    for item in ls:
+        status_list = item.strip().split()
+        status = status_list[-1].strip()
+        pid = status_list[1].strip()
+        cmd_name = status_list[0].strip()
+        if cmd_name == "Python":
+            return status == "(ESTABLISHED)", pid
+    return False, -1
+
+def query_service(port):
+    fobj = os.popen("lsof -i tcp:%d" % port)
+    state = fobj.read().strip()
+    if len(state) == 0:
+        return False, -1
+    ls = state.split("\n")
+    ls.reverse()
+    for item in ls:
+        status_list = item.split()
+        status = status_list[-1].strip()
+        pid = status_list[1].strip()
+        cmd_name = status_list[0].strip()
+        if cmd_name in ["ios_minic", "adb"]:
+            return status in ["(ESTABLISHED)", "(LISTEN)"], pid
+    return False, -1
 
 if __name__ == '__main__':
     mini = MinicapStream(TMP_IMG_ZHIHU_DIR, 33333, None)

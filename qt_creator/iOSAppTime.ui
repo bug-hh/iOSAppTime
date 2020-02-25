@@ -25,6 +25,13 @@
     </property>
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
+      <widget class="QPushButton" name="startMinicap">
+       <property name="text">
+        <string>启动 mincap</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="start_screenshot_button">
        <property name="text">
         <string>开始截图</string>

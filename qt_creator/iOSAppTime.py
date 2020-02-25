@@ -22,6 +22,9 @@ class Ui_MainWindow(object):
         self.verticalLayout = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout.setObjectName("verticalLayout")
+        self.startMinicap = QtWidgets.QPushButton(self.verticalLayoutWidget)
+        self.startMinicap.setObjectName("startMinicap")
+        self.verticalLayout.addWidget(self.startMinicap)
         self.start_screenshot_button = QtWidgets.QPushButton(self.verticalLayoutWidget)
         self.start_screenshot_button.setObjectName("start_screenshot_button")
         self.verticalLayout.addWidget(self.start_screenshot_button)
@@ -111,6 +114,7 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        self.startMinicap.setText(_translate("MainWindow", "启动 mincap"))
         self.start_screenshot_button.setText(_translate("MainWindow", "开始截图"))
         self.stop_screenshot_button.setText(_translate("MainWindow", "结束截图"))
         self.cal_button.setText(_translate("MainWindow", "计算时间"))

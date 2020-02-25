@@ -26,6 +26,10 @@ def close_minicap():
     if pid != -1:
         os.system("kill %s" % pid)
 
+    state, pid = Ui_MainWindow.query_service(QueueManager.ANDROID_PORT)
+    if pid != -1:
+        os.system("kill %s" % pid)
+
 def release_resource():
     close_shared_server()
     close_minicap()
@@ -44,4 +48,4 @@ if __name__ == '__main__':
     main()
 
 
-
+# todo 开始截图按钮  刷新 ui 状态

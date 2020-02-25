@@ -1,7 +1,9 @@
 # iOS App 启动时长测量工具
 ## 环境配置
++ 安装 adb
++ 安装 xcode
 + python 3
-+ pip3 install tensorflow
++ pip3 install tensorflow==1.13.2
 + pip3 install PyQt5
 
 ## 公共步骤

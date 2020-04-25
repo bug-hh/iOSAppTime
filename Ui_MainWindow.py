@@ -34,6 +34,9 @@ from app_config.config import JSON_PID_KEY
 from app_config.config import JSON_PROGRESS_DIALOG_CLOSE
 from app_config.config import JSON_ANSWER_KEY
 
+from app_config.config import JSON_SIGNAL_KEY
+from app_config.config import JSON_SIGNAL_UPDATE_KEY
+
 from app_config.config import iOS_ZHIHU_MODEL_NAME
 from app_config.config import iOS_TOP_TODAY_MODEL_NAME
 from app_config.config import iOS_BAIDU_MODEL_NAME
@@ -43,6 +46,8 @@ from app_config.config import iOS_ZHIHU_LABEL_NAME
 from app_config.config import iOS_TOP_TODAY_LABEL_NAME
 from app_config.config import iOS_BAIDU_LABEL_NAME
 from app_config.config import iOS_WEIBO_LABEL_NAME
+
+import app_config.config
 
 from CalProgressDialog import CalProgressDialog
 from QTSignal import QTSignal
@@ -55,7 +60,6 @@ import queue
 import math
 import json
 
-
 class Ui_MainWindow(QtCore.QObject):
 
     signal_training_progress = pyqtSignal(str)
@@ -65,9 +69,11 @@ class Ui_MainWindow(QtCore.QObject):
         self.signal_training_progress.connect(self.update_text_browser)
 
         # 默认为测试 APP 为「知乎」
+
+        self.test_app_code = 1
         self.test_os_type = None
         self.test_app_name = "知乎"
-        self.test_app_code = 1
+
         self.TEST_APP = "zhihu"
         self.LAST_APP = ""
 
@@ -104,12 +110,16 @@ class Ui_MainWindow(QtCore.QObject):
         self.stop_screenshot_button = QtWidgets.QPushButton(self.verticalLayoutWidget)
         self.stop_screenshot_button.setObjectName("stop_screenshot_button")
         self.verticalLayout.addWidget(self.stop_screenshot_button)
-        self.cal_button = QtWidgets.QPushButton(self.verticalLayoutWidget)
-        self.cal_button.setObjectName("cal_button")
-        self.verticalLayout.addWidget(self.cal_button)
-        self.training_button = QtWidgets.QPushButton(self.verticalLayoutWidget)
-        self.training_button.setObjectName("training_button")
-        self.verticalLayout.addWidget(self.training_button)
+
+        # 计算时长
+        # self.cal_button = QtWidgets.QPushButton(self.verticalLayoutWidget)
+        # self.cal_button.setObjectName("cal_button")
+        # self.verticalLayout.addWidget(self.cal_button)
+
+        # 一键训练
+        # self.training_button = QtWidgets.QPushButton(self.verticalLayoutWidget)
+        # self.training_button.setObjectName("training_button")
+        # self.verticalLayout.addWidget(self.training_button)
 
         self.textBrowser = QtWidgets.QTextBrowser(self.centralwidget)
         self.textBrowser.setGeometry(QtCore.QRect(10, 10, 601, 471))
@@ -198,8 +208,8 @@ class Ui_MainWindow(QtCore.QObject):
         self.startMinicap.clicked.connect(self.on_click_start_minicap_button)
         self.start_screenshot_button.clicked.connect(self.on_click_start_screenshot_button)
         self.stop_screenshot_button.clicked.connect(self.on_click_stop_screenshot_button)
-        self.training_button.clicked.connect(self.on_click_training_button)
-        self.cal_button.clicked.connect(self.on_click_cal_button)
+        # self.training_button.clicked.connect(self.on_click_training_button)
+        # self.cal_button.clicked.connect(self.on_click_cal_button)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
         self.comboBox.currentTextChanged.connect(self.on_update_test_app_info)
@@ -226,11 +236,13 @@ class Ui_MainWindow(QtCore.QObject):
 
         self.queue = Queue()
         self.ui_msg_queue = Queue()
+        self.app_info_update_queue = Queue()
         # self.answer_queue = Queue()
         # self.task_pid_status = {}
 
         QueueManager.register('get_queue', callable=lambda : self.queue)
         QueueManager.register('get_ui_msg_queue', callable=lambda : self.ui_msg_queue)
+        QueueManager.register('get_app_info_update_queue', callable=lambda : self.app_info_update_queue)
         # QueueManager.register('get_answer_queue', callable=lambda : self.answer_queue)
         # QueueManager.register('get_task_status', callable=lambda : self.task_pid_status)
 
@@ -239,20 +251,21 @@ class Ui_MainWindow(QtCore.QObject):
 
         self.shared_queue = self.manager.get_queue()
         self.shared_ui_msg_queue = self.manager.get_ui_msg_queue()
+        self.shared_app_info_queue = self.manager.get_app_info_update_queue()
         # self.shared_answer_queue = self.manager.get_answer_queue()
         # self.shared_task_status_dt = self.manager.get_task_status()
 
         if self.DEBUG:
             self.start_screenshot_button.setEnabled(False)
             self.stop_screenshot_button.setEnabled(False)
-            self.cal_button.setEnabled(False)
-            self.training_button.setEnabled(False)
+            # self.cal_button.setEnabled(False)
+            # self.training_button.setEnabled(False)
         else:
             self.startMinicap.setEnabled(False)
             self.start_screenshot_button.setEnabled(False)
             self.stop_screenshot_button.setEnabled(False)
-            self.cal_button.setEnabled(False)
-            self.training_button.setEnabled(False)
+            # self.cal_button.setEnabled(False)
+            # self.training_button.setEnabled(False)
 
         self.times = 1
 
@@ -408,12 +421,12 @@ class Ui_MainWindow(QtCore.QObject):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "App 启动时长测量工具"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "App 特定场景截图工具"))
         self.startMinicap.setText(_translate("MainWindow", "启动 mincap"))
         self.start_screenshot_button.setText(_translate("MainWindow", "开始截图"))
         self.stop_screenshot_button.setText(_translate("MainWindow", "结束截图"))
-        self.cal_button.setText(_translate("MainWindow", "计算时间"))
-        self.training_button.setText(_translate("MainWindow", "一键训练"))
+        # self.cal_button.setText(_translate("MainWindow", "计算时间"))
+        # self.training_button.setText(_translate("MainWindow", "一键训练"))
         self.platform_label_text.setText(_translate("MainWindow", "系统版本："))
         self.platform_type_label_text.setText(_translate("MainWindow", "平台: "))
         self.app_name_label_text.setText(_translate("MainWindow", "被测 APP :"))
@@ -433,6 +446,9 @@ class Ui_MainWindow(QtCore.QObject):
         if not self.minicap:
             self.minicap = MinicapStream(port=PORT, test_app_code=self.test_app_code)
             self.minicap.run()
+        elif not self.minicap.read_image_stream_task.is_alive:
+            self.minicap.run()
+
         self.shared_queue.put(self.times)
         self.textBrowser.append("第 %d 次截图开始" % self.times)
         print("read_image_stream_task YES" if self.minicap.read_image_stream_task.is_alive() else "read_image_stream_task NO")
@@ -619,7 +635,6 @@ class Ui_MainWindow(QtCore.QObject):
         self.test_app_name = ls[0].strip()
         # 1 知乎 2 微博 3 头条 4 百度
         if self.test_app_name == "知乎":
-            self.test_app_code = 1
             self.TEST_APP = "zhihu"
             self.IOS_MODEL_NAME = iOS_ZHIHU_MODEL_NAME
             self.IOS_LABEL_NAME = iOS_ZHIHU_LABEL_NAME
@@ -627,7 +642,6 @@ class Ui_MainWindow(QtCore.QObject):
             self.SORTED_STAGE = ZHIHU_SORTED_STAGE
 
         elif self.test_app_name == "微博":
-            self.test_app_code = 2
             self.TEST_APP = "weibo"
             self.IOS_MODEL_NAME = iOS_WEIBO_MODEL_NAME
             self.IOS_LABEL_NAME = iOS_WEIBO_LABEL_NAME
@@ -656,21 +670,22 @@ class Ui_MainWindow(QtCore.QObject):
                 self.LAST_APP = self.TEST_APP
             else:
                 if self.LAST_APP != self.TEST_APP:
-                    self.times = 0
+                    self.times = 1
             self.startMinicap.setEnabled(True)
             self.start_screenshot_button.setEnabled(True)
             self.stop_screenshot_button.setEnabled(True)
-            self.training_button.setEnabled(True)
-            self.cal_button.setEnabled(True)
-            self.textBrowser.append("被测的 APP 是：%s" % self.test_app_name)
+            self.shared_app_info_queue.put(self.TMP_IMG_DIR)
+            # self.training_button.setEnabled(True)
+            # self.cal_button.setEnabled(True)
+            self.textBrowser.append("被测的 APP 是：%s, %d" % (self.test_app_name, self.test_app_code))
             self.remind_user = True
             print(self.TEST_APP)
 
         else:
             self.start_screenshot_button.setEnabled(False)
             self.stop_screenshot_button.setEnabled(False)
-            self.cal_button.setEnabled(False)
-            self.training_button.setEnabled(False)
+            # self.cal_button.setEnabled(False)
+            # self.training_button.setEnabled(False)
             self.textBrowser.append("请先选择被测的 APP")
 
     def on_update_platform_type_info(self, current_text):

@@ -6,6 +6,8 @@ import socket
 import threading
 import shutil
 import queue
+import time
+import json
 
 from ios_minicap.banner import Banner
 from datetime import datetime
@@ -19,10 +21,16 @@ from app_config.config import TMP_IMG_TOP_TODAY_DIR
 from app_config.config import TMP_IMG_BAIDU_DIR
 from app_config.config import TMP_IMG_WEIBO_DIR
 
+from app_config.config import JSON_SIGNAL_KEY
+from app_config.config import JSON_SIGNAL_UPDATE_KEY
+
+import app_config.config
+
 class MinicapStream(object):
     __instance = None
     __mutex = threading.Lock()
-
+    TMP_IMG_DIR = TMP_IMG_ZHIHU_DIR
+    image_path = TMP_IMG_DIR
     def __init__(self, port, test_app_code):
         self.ip = "127.0.0.1"  # 定义IP
         self.port = port  # 监听的端口
@@ -34,7 +42,7 @@ class MinicapStream(object):
         self.GLOBAL_HEADER_LENGTH = 24
         self.FRAME_HEADER_LENGTH = 4
         self.buffer = None
-        self.platform = "iOS"
+        self.platform = "iOS" if port == 33333 else "Android"
         self.index = 0
         self.frame_size = 0
         self.connectInfo = False
@@ -42,25 +50,25 @@ class MinicapStream(object):
         self.manager = QueueManager(address=('localhost', QueueManager.SHARED_PORT), authkey=b'1234')
         self.manager.connect()
         self.shared_queue = self.manager.get_queue()
+        self.shared_app_info_queue = self.manager.get_app_info_update_queue()
         self.running = False
         self.times = 0
-        self.image_path = ""
         self.test_app_code = test_app_code
-
-        # 1 知乎 2 微博 3 头条 4 百度
         if self.test_app_code == 1:
-            self.test_app_name = "zhihu"
-            self.TMP_PIC_DIR = TMP_IMG_ZHIHU_DIR
-        elif self.test_app_code == 2:
-            self.test_app_name = "weibo"
-            self.TMP_PIC_DIR = TMP_IMG_WEIBO_DIR
-        elif self.test_app_code == 3:
-            self.test_app_name = "top_today"
-            self.TMP_PIC_DIR = TMP_IMG_TOP_TODAY_DIR
-        elif self.test_app_code == 4:
-            self.test_app_name = "baidu"
-            self.TMP_PIC_DIR = TMP_IMG_BAIDU_DIR
+            self.TEST_APP = "zhihu"
+            MinicapStream.TMP_IMG_DIR = TMP_IMG_ZHIHU_DIR
 
+        elif self.test_app_code == 2:
+            self.TEST_APP = "weibo"
+            MinicapStream.TMP_IMG_DIR = TMP_IMG_WEIBO_DIR
+
+        elif self.test_app_code == 3:
+            self.TEST_APP = "top_today"
+            MinicapStream.TMP_IMG_DIR = TMP_IMG_TOP_TODAY_DIR
+
+        elif self.test_app_code == 4:
+            self.TEST_APP = "baidu"
+            MinicapStream.TMP_IMG_DIR = TMP_IMG_BAIDU_DIR
 
     @staticmethod
     def get_builder(img_path, port, lock):
@@ -87,22 +95,32 @@ class MinicapStream(object):
         except queue.Empty:
             return 0
 
-    def _create_picture_dir(self):
-        self.image_path = os.path.join(self.TMP_PIC_DIR, self.platform, str(self.times))
+    def _get_queue_info(self):
+        try:
+            pic_dir = self.shared_app_info_queue.get_nowait()
+            MinicapStream.TMP_IMG_DIR = pic_dir
+            return pic_dir
+        except queue.Empty:
+            return MinicapStream.TMP_IMG_DIR
 
-        if not os.path.exists(self.image_path):
-            print('创建文件夹 %s ' % self.image_path)
-            os.makedirs(self.image_path)
+    def _create_picture_dir(self):
+        MinicapStream.image_path = os.path.join(self._get_queue_info(), self.platform, str(self.times))
+
+        if not os.path.exists(MinicapStream.image_path):
+            print('创建文件夹 %s ' % MinicapStream.image_path)
+            os.makedirs(MinicapStream.image_path)
         else:
-            shutil.rmtree(self.image_path)
-            print('删除已存在文件夹 %s ' % self.image_path)
-            os.makedirs(self.image_path)
-            print('创建文件夹 %s' % self.image_path)
+            shutil.rmtree(MinicapStream.image_path)
+            print('删除已存在文件夹 %s ' % MinicapStream.image_path)
+            os.makedirs(MinicapStream.image_path)
+            print('创建文件夹 %s' % MinicapStream.image_path)
+
             
     def read_image_stream(self):
         # 开始执行
         # 启动socket连接
         self._connect_to_minicap()
+        print("连接 minicap 成功")
         read_banner_bytes = 0
         banner_length = 2
         read_frame_bytes = 0
@@ -115,6 +133,7 @@ class MinicapStream(object):
             if self.times > 0:
                 break
 
+        print("开始截图")
         self._create_picture_dir()
 
         while True:
@@ -125,6 +144,9 @@ class MinicapStream(object):
                 if temp > 0:
                     self.times = temp
                     self._create_picture_dir()
+                    status, pid = query_socket(self.port)
+                    if not status:
+                        self._connect_to_minicap()
                     break
                 elif temp == -2:
                     self._disconnect_from_minicap()
@@ -136,10 +158,11 @@ class MinicapStream(object):
 
             reallen = self.minicap_socket.recv(self.port)
             length = len(reallen)
+
             if not length:
                 continue
+            # print(length)
             cursor = 0
-
             # cursor < length，存在未处理数据
             while cursor < length:
                 # Banner 信息，位置 0-23
@@ -186,7 +209,7 @@ class MinicapStream(object):
                         # print self.get_d()
                         # 保存图片
                         # print "pic path : " + file_path
-                        image_file_path = os.path.join(self.image_path, MinicapStream.get_file_name())
+                        image_file_path = os.path.join(MinicapStream.image_path, MinicapStream.get_file_name())
                         self.save_file(image_file_path, data_body)
                         cursor += frame_body_length
                         frame_body_length = 0
@@ -201,7 +224,17 @@ class MinicapStream(object):
         self._disconnect_from_minicap()
 
     def _connect_to_minicap(self):
-        self.minicap_socket.connect((self.ip, self.port))
+        status, pid = query_service(self.port)
+
+        while not status:
+            print("正在等待 minicap 初始化完成")
+            status, pid = query_service(self.port)
+
+        code = self.minicap_socket.connect_ex((self.ip, self.port))
+
+        if code != 0:
+            print(self.ip, self.port)
+            print("连接 minicap 套接字失败")
 
     def _disconnect_from_minicap(self):
         self.minicap_socket.shutdown(2)
@@ -218,6 +251,38 @@ class MinicapStream(object):
         now = datetime.now()
         file_name = now.strftime("%Y-%m-%d_%H-%M-%S-%f")
         return file_name + ".jpg"
+
+def query_socket(port):
+    fobj = os.popen("lsof -i tcp:%d" % port)
+    state = fobj.read().strip()
+    if len(state) == 0:
+        return False, -1
+    ls = state.split("\n")
+    ls.reverse()
+    for item in ls:
+        status_list = item.strip().split()
+        status = status_list[-1].strip()
+        pid = status_list[1].strip()
+        cmd_name = status_list[0].strip()
+        if cmd_name == "Python":
+            return status == "(ESTABLISHED)", pid
+    return False, -1
+
+def query_service(port):
+    fobj = os.popen("lsof -i tcp:%d" % port)
+    state = fobj.read().strip()
+    if len(state) == 0:
+        return False, -1
+    ls = state.split("\n")
+    ls.reverse()
+    for item in ls:
+        status_list = item.split()
+        status = status_list[-1].strip()
+        pid = status_list[1].strip()
+        cmd_name = status_list[0].strip()
+        if cmd_name in ["ios_minic", "adb"]:
+            return status in ["(ESTABLISHED)", "(LISTEN)"], pid
+    return False, -1
 
 if __name__ == '__main__':
     mini = MinicapStream(TMP_IMG_ZHIHU_DIR, 33333, None)

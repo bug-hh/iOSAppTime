@@ -90,7 +90,7 @@ class CalTime(object):
             self.TMP_IMG_DIR = TMP_IMG_BAIDU_DIR
             self.APP_STAGE = BAIDU_STAGE
 
-    def upper_bound(self, pic_dir, pic_list, first, last, value, target_stage):
+    def upper_bound(self, pic_dir, pic_list, first, last, value):
         '''
         求 pic_list 数组中 最后一个大于 value 的值的小标，即 [1,1,2,2,10,10,10,20], value = 10, 那么函数将返回下标 7，即最右边的那个 10 的下标 [first, last), 左闭右开
         如果不存在，则返回 last
@@ -146,7 +146,7 @@ class CalTime(object):
         return first
 
     # todo 加入进度条代码
-    def lower_bound(self, pic_dir, pic_list, first, last, value, target_stage):
+    def lower_bound(self, pic_dir, pic_list, first, last, value):
         if last == 0:
             return -2
         z = 0
@@ -200,7 +200,33 @@ class CalTime(object):
 
         return True
 
-    def _check_precise(self, pic_index, pic_list, pic_dir, is_upper_bound, target_stage):
+    def _check_logo(self, pic_index, pic_list, pic_dir):
+        '''
+		现在「启动时长」 = 「logo 的 uppper bound 后面的 第一张不是 logo 的图」 - start
+		:param pic_index:
+		:param pic_list:
+		:param pic_dir:
+		:return:
+		'''
+        y = 0
+        pic_path = os.path.join(pic_dir, pic_list[pic_index])
+        id_ret = self.classifier.identify_pic(pic_path)
+        direction = 1
+        length = len(pic_list)
+        msg = {}
+        while id_ret[0] == 'logo' and 1 <= pic_index < length - 1:
+            if id_ret[0] == 'ad':
+                return -2, None
+            y += 1
+            print("_check_logo: y = %d" % y)
+            self.progress += 1
+            pic_index += direction
+            pic_path = os.path.join(pic_dir, pic_list[pic_index])
+            id_ret = self.classifier.identify_pic(pic_path)
+
+        return pic_index, id_ret
+
+    def _check_precise(self, pic_index, pic_list, pic_dir, target_stage):
         '''
         检查准确度是否符合预期，如果不符合，则返回符合预期的图片的索引值
         :param pic_index:
@@ -277,17 +303,26 @@ class CalTime(object):
         for stage in self.SORTED_STAGE:
             if stage in exclude_list:
                 continue
-            search_method = self.upper_bound if stage == 'start' else self.lower_bound
-            is_upper_bound = True if stage == 'start' else False
-            bound_index = search_method(pic_dir, pic_list, 0, length, self.SORTED_STAGE[stage], stage)
+
+            bound_index = -1
+            # 用 logo 的 lower_bound 往回找，找出 start
+            if stage == 'start':
+                bound_index = self.lower_bound(pic_dir, pic_list, 0, length, self.SORTED_STAGE['logo'])
+            # 用 logo 的 upper_bound 向前找，找出第一张不是 logo 的截图，作为 loading
+            elif stage == 'loading':
+                bound_index = self.upper_bound(pic_dir, pic_list, 0, length, self.SORTED_STAGE['logo'])
+
+            is_upper_bound = True if stage == 'loading' else False
 
             if self._handle_ad_and_bad(bound_index):
                 return
 
-            # 用 'logo' 找 'start'
-            if stage == 'logo':
-                stage = 'start'
-            search_result = self._check_precise(bound_index, pic_list, pic_dir, is_upper_bound, stage)
+
+            if stage == 'start':
+                search_result = self._check_precise(bound_index, pic_list, pic_dir, stage)
+            else:
+                search_result = self._check_logo(bound_index, pic_list, pic_dir)
+
             if not self._check_result(is_upper_bound, search_result, length):
                 error_str = "文件夹 %d: %s 阶段不存在" % (self.times_counter, stage)
                 print(error_str)
@@ -299,7 +334,7 @@ class CalTime(object):
                 # self.shared_task_status_dt.update({self.PID: True})
                 # return
             else:
-                index = search_result[0] - 1 if is_upper_bound else search_result[0]
+                index = search_result[0]
                 pic_path = os.path.join(pic_dir, pic_list[index])
                 ret[stage] = (self.get_create_time(pic_list[index]), pic_path, search_result[1])
 
@@ -331,7 +366,12 @@ class CalTime(object):
             launch_time = 0
             home_page_loading_time = 0
 
-        str2 = "文件夹 %d: App 启动时长：%.3fs   App 首页加载时长：%.3fs " % (self.times_counter, launch_time, home_page_loading_time)
+        for key in ret:
+            print(ret[key])
+        print()
+        str2 = "文件夹 %d: App 启动时长：%.3fs" % (self.times_counter, launch_time)
+        # str2 = "文件夹 %d: App 启动时长：%.3fs   App 首页加载时长：%.3fs " % (self.times_counter, launch_time, home_page_loading_time)
+
         print(str2)
 
         now = time.time()

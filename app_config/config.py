@@ -51,7 +51,7 @@ TOP_TODAY_SORTED_STAGE = {'start': 1, 'logo': 2, 'ad': 3, 'loading': 4, 'end': 5
 WEIBO_SORTED_STAGE = {'start': 1, 'logo': 2, 'ad': 3, 'loading': 4, 'end': 5}
 
 # 用 'logo' 找 start
-EXCLUDED_LIST = ['start', 'ad']
+EXCLUDED_LIST = ['ad', 'logo', 'words', 'end', 'home']
 
 # GUI Message Key
 JSON_MINICAP_KEY = 'MINICAP'
@@ -60,6 +60,10 @@ JSON_TEXT_BROWSER_KEY = 'TEXT_BROWSER'
 JSON_PID_KEY = 'pid'
 JSON_PROGRESS_DIALOG_CLOSE = 'PROGRESS_DIALOG_CLOSE'
 JSON_ANSWER_KEY = 'TASK_ANSWER'
+
+# Update App Info Key
+JSON_SIGNAL_KEY = "SIGNAL_NUMBER"
+JSON_SIGNAL_UPDATE_KEY = "SIGNAL_UPDATE"
 
 
 HUMAN = {

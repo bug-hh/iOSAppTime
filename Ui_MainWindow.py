@@ -34,6 +34,9 @@ from app_config.config import JSON_PID_KEY
 from app_config.config import JSON_PROGRESS_DIALOG_CLOSE
 from app_config.config import JSON_ANSWER_KEY
 
+from app_config.config import JSON_SIGNAL_KEY
+from app_config.config import JSON_SIGNAL_UPDATE_KEY
+
 from app_config.config import iOS_ZHIHU_MODEL_NAME
 from app_config.config import iOS_TOP_TODAY_MODEL_NAME
 from app_config.config import iOS_BAIDU_MODEL_NAME
@@ -43,6 +46,8 @@ from app_config.config import iOS_ZHIHU_LABEL_NAME
 from app_config.config import iOS_TOP_TODAY_LABEL_NAME
 from app_config.config import iOS_BAIDU_LABEL_NAME
 from app_config.config import iOS_WEIBO_LABEL_NAME
+
+import app_config.config
 
 from CalProgressDialog import CalProgressDialog
 from QTSignal import QTSignal
@@ -55,7 +60,6 @@ import queue
 import math
 import json
 
-
 class Ui_MainWindow(QtCore.QObject):
 
     signal_training_progress = pyqtSignal(str)
@@ -65,9 +69,13 @@ class Ui_MainWindow(QtCore.QObject):
         self.signal_training_progress.connect(self.update_text_browser)
 
         # 默认为测试 APP 为「知乎」
-        self.test_app_name = "知乎"
+
         self.test_app_code = 1
+        self.test_os_type = None
+        self.test_app_name = "知乎"
+
         self.TEST_APP = "zhihu"
+        self.LAST_APP = ""
 
         self.IOS_MODEL_NAME = iOS_ZHIHU_MODEL_NAME
         self.IOS_LABEL_NAME = iOS_ZHIHU_LABEL_NAME
@@ -92,18 +100,26 @@ class Ui_MainWindow(QtCore.QObject):
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout.setObjectName("verticalLayout")
 
+        self.startMinicap = QtWidgets.QPushButton(self.verticalLayoutWidget)
+        self.startMinicap.setObjectName("startMinicap")
+        self.verticalLayout.addWidget(self.startMinicap)
+
         self.start_screenshot_button = QtWidgets.QPushButton(self.verticalLayoutWidget)
         self.start_screenshot_button.setObjectName("start_screenshot_button")
         self.verticalLayout.addWidget(self.start_screenshot_button)
         self.stop_screenshot_button = QtWidgets.QPushButton(self.verticalLayoutWidget)
         self.stop_screenshot_button.setObjectName("stop_screenshot_button")
         self.verticalLayout.addWidget(self.stop_screenshot_button)
-        self.cal_button = QtWidgets.QPushButton(self.verticalLayoutWidget)
-        self.cal_button.setObjectName("cal_button")
-        self.verticalLayout.addWidget(self.cal_button)
-        self.training_button = QtWidgets.QPushButton(self.verticalLayoutWidget)
-        self.training_button.setObjectName("training_button")
-        self.verticalLayout.addWidget(self.training_button)
+
+        # 计算时长
+        # self.cal_button = QtWidgets.QPushButton(self.verticalLayoutWidget)
+        # self.cal_button.setObjectName("cal_button")
+        # self.verticalLayout.addWidget(self.cal_button)
+
+        # 一键训练
+        # self.training_button = QtWidgets.QPushButton(self.verticalLayoutWidget)
+        # self.training_button.setObjectName("training_button")
+        # self.verticalLayout.addWidget(self.training_button)
 
         self.textBrowser = QtWidgets.QTextBrowser(self.centralwidget)
         self.textBrowser.setGeometry(QtCore.QRect(10, 10, 601, 471))
@@ -134,6 +150,19 @@ class Ui_MainWindow(QtCore.QObject):
         self.platform_label.setAlignment(QtCore.Qt.AlignCenter)
         self.platform_label.setObjectName("platform_label")
         self.horizontalLayout.addWidget(self.platform_label)
+
+        self.platform_type_label_text = QtWidgets.QLabel(self.horizontalLayoutWidget)
+        self.platform_type_label_text.setObjectName("platform_type_label_text")
+        self.horizontalLayout.addWidget(self.platform_type_label_text)
+        self.platform_type_comboBox = QtWidgets.QComboBox(self.horizontalLayoutWidget)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(1)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.platform_type_comboBox.sizePolicy().hasHeightForWidth())
+        self.platform_type_comboBox.setSizePolicy(sizePolicy)
+        self.platform_type_comboBox.setObjectName("platform_type_comboBox")
+        self.horizontalLayout.addWidget(self.platform_type_comboBox)
+
         self.app_name_label_text = QtWidgets.QLabel(self.horizontalLayoutWidget)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(1)
@@ -145,7 +174,7 @@ class Ui_MainWindow(QtCore.QObject):
         self.horizontalLayout.addWidget(self.app_name_label_text)
         self.comboBox = QtWidgets.QComboBox(self.horizontalLayoutWidget)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
-        sizePolicy.setHorizontalStretch(2)
+        sizePolicy.setHorizontalStretch(1)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.comboBox.sizePolicy().hasHeightForWidth())
         self.comboBox.setSizePolicy(sizePolicy)
@@ -171,25 +200,32 @@ class Ui_MainWindow(QtCore.QObject):
         # self.menu.addAction(self.actionSet_training_pictures)
         # self.menubar.addAction(self.menu.menuAction())
 
+        # 添加操作系统类型下拉选项
+        self.set_platform_info()
+
         self.retranslateUi(MainWindow)
 
+        self.startMinicap.clicked.connect(self.on_click_start_minicap_button)
         self.start_screenshot_button.clicked.connect(self.on_click_start_screenshot_button)
         self.stop_screenshot_button.clicked.connect(self.on_click_stop_screenshot_button)
-        self.training_button.clicked.connect(self.on_click_training_button)
-        self.cal_button.clicked.connect(self.on_click_cal_button)
+        # self.training_button.clicked.connect(self.on_click_training_button)
+        # self.cal_button.clicked.connect(self.on_click_cal_button)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
         self.comboBox.currentTextChanged.connect(self.on_update_test_app_info)
+        self.platform_type_comboBox.currentTextChanged.connect(self.on_update_platform_type_info)
 
         # self.actionAdd_model_file.triggered.connect(self.on_click_set_model_action)
         # self.actionSet_training_pictures.triggered.connect(self.on_click_set_pic_action)
 
+        self.platform_type_flag = False
         self.ios_version_flag = False
         self.app_version_flag = False
 
-
+        # 毫秒
+        self.interval = 200
         self.CLOCK = QTimer()
-        self.CLOCK.setInterval(1000)
+        self.CLOCK.setInterval(self.interval)
         self.CLOCK.timeout.connect(self._count_down)
 
         self.TRAINING_CLOCK = QTimer()
@@ -198,14 +234,15 @@ class Ui_MainWindow(QtCore.QObject):
 
         self.i = 0
 
-
         self.queue = Queue()
         self.ui_msg_queue = Queue()
+        self.app_info_update_queue = Queue()
         # self.answer_queue = Queue()
         # self.task_pid_status = {}
 
         QueueManager.register('get_queue', callable=lambda : self.queue)
         QueueManager.register('get_ui_msg_queue', callable=lambda : self.ui_msg_queue)
+        QueueManager.register('get_app_info_update_queue', callable=lambda : self.app_info_update_queue)
         # QueueManager.register('get_answer_queue', callable=lambda : self.answer_queue)
         # QueueManager.register('get_task_status', callable=lambda : self.task_pid_status)
 
@@ -214,19 +251,21 @@ class Ui_MainWindow(QtCore.QObject):
 
         self.shared_queue = self.manager.get_queue()
         self.shared_ui_msg_queue = self.manager.get_ui_msg_queue()
+        self.shared_app_info_queue = self.manager.get_app_info_update_queue()
         # self.shared_answer_queue = self.manager.get_answer_queue()
         # self.shared_task_status_dt = self.manager.get_task_status()
 
         if self.DEBUG:
             self.start_screenshot_button.setEnabled(False)
             self.stop_screenshot_button.setEnabled(False)
-            self.cal_button.setEnabled(False)
-            self.training_button.setEnabled(False)
+            # self.cal_button.setEnabled(False)
+            # self.training_button.setEnabled(False)
         else:
+            self.startMinicap.setEnabled(False)
             self.start_screenshot_button.setEnabled(False)
             self.stop_screenshot_button.setEnabled(False)
-            self.cal_button.setEnabled(False)
-            self.training_button.setEnabled(False)
+            # self.cal_button.setEnabled(False)
+            # self.training_button.setEnabled(False)
 
         self.times = 1
 
@@ -242,11 +281,12 @@ class Ui_MainWindow(QtCore.QObject):
         self.remind_user = True
         self.training_pic_dir = os.path.join(ABOUT_TRAINING, self.TEST_APP, "iOS_1-50")
         self.model_path = os.path.join(ABOUT_TRAINING, self.TEST_APP, "model", self.IOS_MODEL_NAME)
-        self.WAIT_TIME = 4 # SECONDS
-        self.percent = 100 // self.WAIT_TIME
-        
+
+        self.WAIT_TIME = 5 # TIMES 次数
+
         self.task_process_1 = None
         self.task_process_2 = None
+
 
     def start_update_ui_thread(self):
         self.ui_update_thread = Thread(target=self._update_ui)
@@ -258,14 +298,22 @@ class Ui_MainWindow(QtCore.QObject):
         data_progress = ""
         data_pid = ""
         data_answer = ""
+        if not self.platform_type_flag:
+            msg = {JSON_PID_KEY: os.getpid(), JSON_TEXT_BROWSER_KEY: ('请先选择 OS 平台类型', )}
+            self._update_info(msg[JSON_TEXT_BROWSER_KEY], os.getpid())
         while True:
             try:
+                if not self.platform_type_flag:
+                    continue
                 if not self.ios_version_flag:
                     self.platform_label.setText(self.query_ios_version())
+                    continue
 
                 if not self.app_version_flag:
                     self.comboBox.addItems(self.query_app_info())
                 ui_data = self.shared_ui_msg_queue.get_nowait()
+                if not ui_data:
+                    continue
                 msg = json.loads(ui_data)
                 for key in msg:
                     if key == JSON_TEXT_BROWSER_KEY:
@@ -328,6 +376,7 @@ class Ui_MainWindow(QtCore.QObject):
             aver_home_page_loading_time /= 1000
 
             msg = {}
+            # str_aver = "平均启动时长：%.3f" % (aver_launch_time)
             str_aver = "平均启动时长：%.3f  平均加载时长: %.3f" % (aver_launch_time, aver_home_page_loading_time)
             self._update_info(str_aver, os.getpid())
             print(str_aver)
@@ -372,12 +421,14 @@ class Ui_MainWindow(QtCore.QObject):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "App 启动时长测量工具"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "App 特定场景截图工具"))
+        self.startMinicap.setText(_translate("MainWindow", "启动 mincap"))
         self.start_screenshot_button.setText(_translate("MainWindow", "开始截图"))
         self.stop_screenshot_button.setText(_translate("MainWindow", "结束截图"))
-        self.cal_button.setText(_translate("MainWindow", "计算时间"))
-        self.training_button.setText(_translate("MainWindow", "一键训练"))
+        # self.cal_button.setText(_translate("MainWindow", "计算时间"))
+        # self.training_button.setText(_translate("MainWindow", "一键训练"))
         self.platform_label_text.setText(_translate("MainWindow", "系统版本："))
+        self.platform_type_label_text.setText(_translate("MainWindow", "平台: "))
         self.app_name_label_text.setText(_translate("MainWindow", "被测 APP :"))
         # self.menu.setTitle(_translate("MainWindow", "文件"))
         # self.actionAdd_model_file.setText(_translate("MainWindow", "添加模型文件"))
@@ -385,18 +436,24 @@ class Ui_MainWindow(QtCore.QObject):
 
     def _start_minicap(self):
         cwd = os.getcwd()
-        os.chdir("ios-minicap")
+        minicap_dir = "ios-minicap" if self.test_os_type == "iOS" else "android-minicap"
+        os.chdir(minicap_dir)
         os.system("./run.sh &")
         os.chdir(cwd)
         time.sleep(5)
 
-    def _start_screenshot_process(self):
-        self.minicap = MinicapStream(port=QueueManager.MINICAP_PORT, test_app_code=self.test_app_code)
-        self.minicap.run()
+    def _start_screenshot_process(self, PORT):
+        if not self.minicap:
+            self.minicap = MinicapStream(port=PORT, test_app_code=self.test_app_code)
+            self.minicap.run()
+        elif not self.minicap.read_image_stream_task.is_alive:
+            self.minicap.run()
+
         self.shared_queue.put(self.times)
         self.textBrowser.append("第 %d 次截图开始" % self.times)
-        self.textBrowser.append("请等待 %d s，再点击 app 截图" % self.WAIT_TIME)
-        self.stop_screenshot_button.setEnabled(True)
+        print("read_image_stream_task YES" if self.minicap.read_image_stream_task.is_alive() else "read_image_stream_task NO")
+        self.textBrowser.append("请等待 %d s，再点击 app 截图" % int(self.interval * self.WAIT_TIME / 1000))
+        # self.stop_screenshot_button.setEnabled(True)
         self.times += 1
 
     def _stop_screenshot_process(self):
@@ -405,7 +462,18 @@ class Ui_MainWindow(QtCore.QObject):
         :return:
         '''
         self.shared_queue.put(-1)
-        self.textBrowser.append("截图停止")
+        msg = {JSON_PID_KEY: os.getpid(), JSON_TEXT_BROWSER_KEY: ("截图停止",)}
+        self.shared_ui_msg_queue.put(json.dumps(msg))
+
+    def _terminate_screenshot_process(self):
+        '''
+        断开与 minicap 连接的套接字
+        :return:
+        '''
+        print("断开与 minicap 连接的套接字")
+        self.shared_queue.put(-2)
+        msg = {JSON_PID_KEY: os.getpid(), JSON_TEXT_BROWSER_KEY: ("断开与 minicap 连接的套接字",)}
+        self.shared_ui_msg_queue.put(json.dumps(msg))
 
     def _dispatch_cal_task(self):
         screenshots_dir = os.path.join(self.TMP_IMG_DIR, "iOS")
@@ -479,23 +547,30 @@ class Ui_MainWindow(QtCore.QObject):
         process_training = Process(target=training.start_training, args=(image_path, output_graph, output_labels, self.TEST_APP))
         process_training.start()
 
-    def _checkout_ios_minicap(self):
-        status, pid = Ui_MainWindow.query_service(QueueManager.MINICAP_PORT)
+    def _checkout_minicap(self, PORT):
+        status, pid = Ui_MainWindow.query_service(PORT)
         if not status:
+            print("minicap status: %s  pid: %s" % (status, pid))
             if pid != -1:
                 os.system("kill %s" % pid)
             proc_start_minicap = Process(target=self._start_minicap)
             proc_start_minicap.daemon = True
             proc_start_minicap.start()
 
-    def on_click_minicap_button(self):
-        # 首先查询 ios-minicap 的状态，如果状态不是 listen，则重新启动
-        self._checkout_ios_minicap()
-        self.textBrowser.append("正在启动 ios-minicap，请等待 %d s，再开始操作" % self.WAIT_TIME)
-        # 添加一个 dialog，倒数 self.WAIT_TIME s,倒数 self.WAIT_TIME s 后，显示启动成功
-        self._startup_progress_dialog("Waiting for ios-minicap", self.WAIT_TIME, True, self.CLOCK)
-        self.start_screenshot_button.setEnabled(True)
-        self.stop_screenshot_button.setEnabled(True)
+    # def on_click_minicap_button(self):
+    #     # 首先查询 ios-minicap 的状态，如果状态不是 listen，则重新启动
+    #     self._checkout_ios_minicap()
+    #     self.textBrowser.append("正在启动 ios-minicap，请等待 %d s，再开始操作" % int(self.interval * self.WAIT_TIME // 1000))
+    #     # 添加一个 dialog，倒数 self.WAIT_TIME s,倒数 self.WAIT_TIME s 后，显示启动成功
+    #     self._startup_progress_dialog("Waiting for ios-minicap", self.WAIT_TIME, True, self.CLOCK)
+    #     self.start_screenshot_button.setEnabled(True)
+    #     self.stop_screenshot_button.setEnabled(True)
+
+    def on_click_start_minicap_button(self):
+        PORT = QueueManager.MINICAP_PORT if self.test_os_type == "iOS" else QueueManager.ANDROID_PORT
+        self._checkout_minicap(PORT)
+        if self.test_os_type == 'iOS':
+            self._startup_progress_dialog("Waiting for ios-minicap", self.WAIT_TIME, True, self.CLOCK)
 
     def on_click_start_screenshot_button(self):
         '''
@@ -505,24 +580,23 @@ class Ui_MainWindow(QtCore.QObject):
         # 每点击一次启动截图，就代表新的一轮截图，即：在capture/tmp_pic/iOS/ 下，再次新建一个文件夹，点击开始计算，就开始将所有截图进行计算，根据新建的文件夹个数反馈进度，显示在进度条上，最后给出一个总体结果到 text browser 上
         # 当点击一次启动截图后，就将启动截图按钮禁用，直到停止截图按钮被按下
         # 首先查询 ios-minicap 的状态，如果状态不是 listen，则重新启动
-        self._checkout_ios_minicap()
-        self._startup_progress_dialog("Waiting for ios-minicap", self.WAIT_TIME, True, self.CLOCK)
-        self._start_screenshot_process()
-        self.start_screenshot_button.setEnabled(False)
+        PORT = QueueManager.MINICAP_PORT if self.test_os_type == "iOS" else QueueManager.ANDROID_PORT
+        self._start_screenshot_process(PORT)
+        # self.start_screenshot_button.setEnabled(False)
 
     def on_click_stop_screenshot_button(self):
         '''
         停止截图
         :return:
         '''
+        # self.start_screenshot_button.setEnabled(True)
         self._stop_screenshot_process()
-        self.start_screenshot_button.setEnabled(True)
 
     def on_click_cal_button(self):
         self.textBrowser.clear()
         self.textBrowser.append("正在启动计算进程")
         self._setup_qt_signal()
-        self.cal_progress_dialog.show()
+        # self.cal_progress_dialog.show()
         cal_process = Process(target=self._dispatch_cal_task)
         cal_process.start()
         self.cal_process_ls.append(cal_process.pid)
@@ -561,7 +635,6 @@ class Ui_MainWindow(QtCore.QObject):
         self.test_app_name = ls[0].strip()
         # 1 知乎 2 微博 3 头条 4 百度
         if self.test_app_name == "知乎":
-            self.test_app_code = 1
             self.TEST_APP = "zhihu"
             self.IOS_MODEL_NAME = iOS_ZHIHU_MODEL_NAME
             self.IOS_LABEL_NAME = iOS_ZHIHU_LABEL_NAME
@@ -569,7 +642,6 @@ class Ui_MainWindow(QtCore.QObject):
             self.SORTED_STAGE = ZHIHU_SORTED_STAGE
 
         elif self.test_app_name == "微博":
-            self.test_app_code = 2
             self.TEST_APP = "weibo"
             self.IOS_MODEL_NAME = iOS_WEIBO_MODEL_NAME
             self.IOS_LABEL_NAME = iOS_WEIBO_LABEL_NAME
@@ -594,19 +666,41 @@ class Ui_MainWindow(QtCore.QObject):
 
         # 当用户选好「被测 APP」后，打开「开始截图」「一键训练」按钮
         if self.test_app_name != "None":
+            if self.LAST_APP == "":
+                self.LAST_APP = self.TEST_APP
+            else:
+                if self.LAST_APP != self.TEST_APP:
+                    self.times = 1
+            self.startMinicap.setEnabled(True)
             self.start_screenshot_button.setEnabled(True)
-            self.training_button.setEnabled(True)
-            self.cal_button.setEnabled(True)
-            self.textBrowser.append("被测的 APP 是：%s" % self.test_app_name)
+            self.stop_screenshot_button.setEnabled(True)
+            self.shared_app_info_queue.put(self.TMP_IMG_DIR)
+            # self.training_button.setEnabled(True)
+            # self.cal_button.setEnabled(True)
+            self.textBrowser.append("被测的 APP 是：%s, %d" % (self.test_app_name, self.test_app_code))
             self.remind_user = True
             print(self.TEST_APP)
 
         else:
             self.start_screenshot_button.setEnabled(False)
             self.stop_screenshot_button.setEnabled(False)
-            self.cal_button.setEnabled(False)
-            self.training_button.setEnabled(False)
+            # self.cal_button.setEnabled(False)
+            # self.training_button.setEnabled(False)
             self.textBrowser.append("请先选择被测的 APP")
+
+    def on_update_platform_type_info(self, current_text):
+        print(current_text)
+        ls = current_text.strip().split()
+        # 在更换操作系统的时候，且存在与 minicap 连接的套接字时, 且更换的 OS 类型与上一次的不同时，断开原来的套接字连接
+        if self.minicap and ls[0].strip() != "None" and self.test_os_type != ls[0].strip():
+            self._terminate_screenshot_process()
+            self.minicap = None
+
+        self.test_os_type = ls[0].strip()
+        self.textBrowser.append("操作系统平台是：%s" % self.test_os_type)
+        self.comboBox.setCurrentIndex(0)
+        self.textBrowser.append("正在查询操作系统版本，请稍等")
+        self.platform_type_flag = True
 
     def _setup_msg_box(self):
         self.message_box = QtWidgets.QMessageBox()
@@ -629,7 +723,7 @@ class Ui_MainWindow(QtCore.QObject):
         self.progressDialog.setFixedWidth(500)
         self.progressDialog.setAutoClose(True)
         self.progressDialog.setModal(is_modal)
-        para_clock.start(max_num * 1000)
+        para_clock.start(max_num * self.interval)
 
     def _training_count_down(self):
         self.progressDialog.setValue(self.i + 1)
@@ -640,14 +734,15 @@ class Ui_MainWindow(QtCore.QObject):
             self.i = 0
 
     def _count_down(self):
-        self.progressDialog.setValue(self.i + 1)
-        self.progressDialog.setLabelText("Waiting for ios-minicap: %d%%" % (self.percent))
-        self.percent += (100 // self.WAIT_TIME)
         self.i += 1
+        self.progressDialog.setValue(self.i)
+        self.progressDialog.setLabelText("Waiting for ios-minicap: %d%%" % int(self.i / self.WAIT_TIME * 100))
+
         if self.i == self.WAIT_TIME:
             self.CLOCK.stop()
             self.i = 0
-            self.percent = 100 // self.WAIT_TIME
+            msg = {JSON_TEXT_BROWSER_KEY: "可以点击 App 截图了", JSON_PID_KEY: os.getpid()}
+            self.shared_ui_msg_queue.put(json.dumps(msg))
 
     @staticmethod
     def query_service(port):
@@ -656,39 +751,52 @@ class Ui_MainWindow(QtCore.QObject):
         if len(state) == 0:
             return False, -1
         ls = state.split("\n")
-
-        status_list = ls[-1].split()
-        status = status_list[-1]
-        pid = status_list[1]
-        return status == "(LISTEN)", pid
+        ls.reverse()
+        for item in ls:
+            status_list = item.split()
+            status = status_list[-1].strip()
+            pid = status_list[1].strip()
+            cmd_name = status_list[0].strip()
+            if cmd_name in ["ios_minic", "adb"]:
+                return status in ["(ESTABLISHED)", "(LISTEN)"], pid
+        return False, -1
 
     def query_ios_version(self):
-        cmd = "instruments -s devices | grep -v -i simulator | grep -i null"
+        android_cmd = "adb shell getprop ro.build.version.release"
+        ios_cmd = "instruments -s devices | grep -v -i simulator | grep -i null"
+        cmd = ios_cmd if self.test_os_type == "iOS" else android_cmd
         fobj = os.popen(cmd)
-        query_result = False if len(fobj.read()) == 0 else True
-        if not query_result:
-            cmd = "instruments -s devices | grep -v -i simulator | grep -i iphone"
-            fobj = os.popen(cmd)
-            for line in fobj:
-                ls = line.strip().split()
-                self.ios_version_flag = True
-                return "iOS %s" % ls[1]
+        if self.test_os_type == "iOS":
+            query_result = False if len(fobj.read()) == 0 else True
+            if not query_result:
+                cmd = "instruments -s devices | grep -v -i simulator | grep -i iphone"
+                fobj = os.popen(cmd)
+                for line in fobj:
+                    ls = line.strip().split()
+                    self.ios_version_flag = True
+                    return "%s %s" % (self.test_os_type, ls[2])
+        elif self.test_os_type == "Android":
+            version = fobj.read().strip()
+            self.ios_version_flag = True
+            return "%s %s" % (self.test_os_type, version)
         else:
-            return "请先信任 iPhone 所连接的电脑"
+            return "请连接且信任 %s 所连接的电脑" % "iPhone" if self.test_os_type == "iOS" else "Android 设备"
 
     def query_app_info(self):
         '''
         查询所有安装的 app （系统 app 除外），然后生成一个列表，让用户选择对应的 app
         :return:
         '''
-        cmd = "ideviceinstaller -l -o list_user"
+        ios_cmd = "ideviceinstaller -l -o list_user"
+        android_cmd = "adb shell pm list packages"
+        cmd = ios_cmd if self.test_os_type == "iOS" else android_cmd
         fobj = os.popen(cmd)
 
         ls = ["None"]
         for line in fobj:
             if line.strip().find("baidu") != -1:
                 ls.append("百度")
-            elif line.strip().find("zhihu.ios") != -1:
+            elif line.strip().find("zhihu.ios") != -1 or line.strip() == "package:com.zhihu.android":
                 ls.append("知乎")
             elif line.strip().find("weibo") != -1:
                 ls.append("微博")
@@ -698,3 +806,11 @@ class Ui_MainWindow(QtCore.QObject):
         self.app_version_flag = True if len(ls) > 1 else False
 
         return ls
+
+    def set_platform_info(self):
+        '''
+        初始化「操作系统类型选择列表」
+        :return:
+        '''
+        os_ls = ["None", "iOS"]
+        self.platform_type_comboBox.addItems(os_ls)

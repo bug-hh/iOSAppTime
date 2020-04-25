@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'iOSAppTime.ui'
 #
-# Created by: PyQt5 UI code generator 5.13.0
+# Created by: PyQt5 UI code generator 5.14.1
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -22,6 +22,9 @@ class Ui_MainWindow(object):
         self.verticalLayout = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout.setObjectName("verticalLayout")
+        self.startMinicap = QtWidgets.QPushButton(self.verticalLayoutWidget)
+        self.startMinicap.setObjectName("startMinicap")
+        self.verticalLayout.addWidget(self.startMinicap)
         self.start_screenshot_button = QtWidgets.QPushButton(self.verticalLayoutWidget)
         self.start_screenshot_button.setObjectName("start_screenshot_button")
         self.verticalLayout.addWidget(self.start_screenshot_button)
@@ -62,6 +65,17 @@ class Ui_MainWindow(object):
         self.platform_label.setAlignment(QtCore.Qt.AlignCenter)
         self.platform_label.setObjectName("platform_label")
         self.horizontalLayout.addWidget(self.platform_label)
+        self.platform_type_label_text = QtWidgets.QLabel(self.horizontalLayoutWidget)
+        self.platform_type_label_text.setObjectName("platform_type_label_text")
+        self.horizontalLayout.addWidget(self.platform_type_label_text)
+        self.platform_type_comboBox = QtWidgets.QComboBox(self.horizontalLayoutWidget)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(1)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.platform_type_comboBox.sizePolicy().hasHeightForWidth())
+        self.platform_type_comboBox.setSizePolicy(sizePolicy)
+        self.platform_type_comboBox.setObjectName("platform_type_comboBox")
+        self.horizontalLayout.addWidget(self.platform_type_comboBox)
         self.app_name_label_text = QtWidgets.QLabel(self.horizontalLayoutWidget)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(1)
@@ -73,7 +87,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addWidget(self.app_name_label_text)
         self.comboBox = QtWidgets.QComboBox(self.horizontalLayoutWidget)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
-        sizePolicy.setHorizontalStretch(2)
+        sizePolicy.setHorizontalStretch(1)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.comboBox.sizePolicy().hasHeightForWidth())
         self.comboBox.setSizePolicy(sizePolicy)
@@ -100,11 +114,13 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        self.startMinicap.setText(_translate("MainWindow", "启动 mincap"))
         self.start_screenshot_button.setText(_translate("MainWindow", "开始截图"))
         self.stop_screenshot_button.setText(_translate("MainWindow", "结束截图"))
         self.cal_button.setText(_translate("MainWindow", "计算时间"))
         self.training_button.setText(_translate("MainWindow", "一键训练"))
         self.platform_label_text.setText(_translate("MainWindow", "系统版本："))
+        self.platform_type_label_text.setText(_translate("MainWindow", "平台: "))
         self.app_name_label_text.setText(_translate("MainWindow", "被测 APP :"))
         self.actionSet_ipa_file_path.setText(_translate("MainWindow", "Set ipa file path"))
         self.actionAdd_model_file.setText(_translate("MainWindow", "Add model file"))

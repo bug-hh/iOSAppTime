@@ -112,14 +112,14 @@ class Ui_MainWindow(QtCore.QObject):
         self.verticalLayout.addWidget(self.stop_screenshot_button)
 
         # 计算时长
-        # self.cal_button = QtWidgets.QPushButton(self.verticalLayoutWidget)
-        # self.cal_button.setObjectName("cal_button")
-        # self.verticalLayout.addWidget(self.cal_button)
+        self.cal_button = QtWidgets.QPushButton(self.verticalLayoutWidget)
+        self.cal_button.setObjectName("cal_button")
+        self.verticalLayout.addWidget(self.cal_button)
 
         # 一键训练
-        # self.training_button = QtWidgets.QPushButton(self.verticalLayoutWidget)
-        # self.training_button.setObjectName("training_button")
-        # self.verticalLayout.addWidget(self.training_button)
+        self.training_button = QtWidgets.QPushButton(self.verticalLayoutWidget)
+        self.training_button.setObjectName("training_button")
+        self.verticalLayout.addWidget(self.training_button)
 
         self.textBrowser = QtWidgets.QTextBrowser(self.centralwidget)
         self.textBrowser.setGeometry(QtCore.QRect(10, 10, 601, 471))
@@ -208,8 +208,8 @@ class Ui_MainWindow(QtCore.QObject):
         self.startMinicap.clicked.connect(self.on_click_start_minicap_button)
         self.start_screenshot_button.clicked.connect(self.on_click_start_screenshot_button)
         self.stop_screenshot_button.clicked.connect(self.on_click_stop_screenshot_button)
-        # self.training_button.clicked.connect(self.on_click_training_button)
-        # self.cal_button.clicked.connect(self.on_click_cal_button)
+        self.training_button.clicked.connect(self.on_click_training_button)
+        self.cal_button.clicked.connect(self.on_click_cal_button)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
         self.comboBox.currentTextChanged.connect(self.on_update_test_app_info)
@@ -237,14 +237,14 @@ class Ui_MainWindow(QtCore.QObject):
         self.queue = Queue()
         self.ui_msg_queue = Queue()
         self.app_info_update_queue = Queue()
-        # self.answer_queue = Queue()
-        # self.task_pid_status = {}
+        self.answer_queue = Queue()
+        self.task_pid_status = {}
 
         QueueManager.register('get_queue', callable=lambda : self.queue)
         QueueManager.register('get_ui_msg_queue', callable=lambda : self.ui_msg_queue)
         QueueManager.register('get_app_info_update_queue', callable=lambda : self.app_info_update_queue)
-        # QueueManager.register('get_answer_queue', callable=lambda : self.answer_queue)
-        # QueueManager.register('get_task_status', callable=lambda : self.task_pid_status)
+        QueueManager.register('get_answer_queue', callable=lambda : self.answer_queue)
+        QueueManager.register('get_task_status', callable=lambda : self.task_pid_status)
 
         self.manager = QueueManager(address=('localhost', QueueManager.SHARED_PORT), authkey=b'1234')
         self.manager.start()
@@ -252,20 +252,20 @@ class Ui_MainWindow(QtCore.QObject):
         self.shared_queue = self.manager.get_queue()
         self.shared_ui_msg_queue = self.manager.get_ui_msg_queue()
         self.shared_app_info_queue = self.manager.get_app_info_update_queue()
-        # self.shared_answer_queue = self.manager.get_answer_queue()
-        # self.shared_task_status_dt = self.manager.get_task_status()
+        self.shared_answer_queue = self.manager.get_answer_queue()
+        self.shared_task_status_dt = self.manager.get_task_status()
 
         if self.DEBUG:
             self.start_screenshot_button.setEnabled(False)
             self.stop_screenshot_button.setEnabled(False)
-            # self.cal_button.setEnabled(False)
-            # self.training_button.setEnabled(False)
+            self.cal_button.setEnabled(False)
+            self.training_button.setEnabled(False)
         else:
             self.startMinicap.setEnabled(False)
             self.start_screenshot_button.setEnabled(False)
             self.stop_screenshot_button.setEnabled(False)
-            # self.cal_button.setEnabled(False)
-            # self.training_button.setEnabled(False)
+            self.cal_button.setEnabled(False)
+            self.training_button.setEnabled(False)
 
         self.times = 1
 
@@ -393,7 +393,7 @@ class Ui_MainWindow(QtCore.QObject):
 
     def _setup_qt_signal(self):
         screenshots_dir = os.path.join(self.TMP_IMG_DIR, "iOS")
-        times_list = os.listdir(screenshots_dir)
+        times_list = [t for t in os.listdir(screenshots_dir) if not t.startswith(".")]
         times_list.sort()
         # counter 表示有多少个计算阶段
         counter = len(self.SORTED_STAGE) - len(EXCLUDED_LIST)
@@ -425,8 +425,8 @@ class Ui_MainWindow(QtCore.QObject):
         self.startMinicap.setText(_translate("MainWindow", "启动 mincap"))
         self.start_screenshot_button.setText(_translate("MainWindow", "开始截图"))
         self.stop_screenshot_button.setText(_translate("MainWindow", "结束截图"))
-        # self.cal_button.setText(_translate("MainWindow", "计算时间"))
-        # self.training_button.setText(_translate("MainWindow", "一键训练"))
+        self.cal_button.setText(_translate("MainWindow", "计算时间"))
+        self.training_button.setText(_translate("MainWindow", "一键训练"))
         self.platform_label_text.setText(_translate("MainWindow", "系统版本："))
         self.platform_type_label_text.setText(_translate("MainWindow", "平台: "))
         self.app_name_label_text.setText(_translate("MainWindow", "被测 APP :"))
@@ -499,15 +499,15 @@ class Ui_MainWindow(QtCore.QObject):
                     flag_1 = True
 
             # 去掉下面注释，则同时开启两个计算进程
-            # if not self.task_process_2 or not self.task_process_2.is_alive():
-            #     if len(temp_times_list) > 0:
-            #         num = temp_times_list.pop(0)
-            #         pictures_dir_2 = os.path.join(screenshots_dir, str(num))
-            #         self.task_process_2 = Process(target=self._cal_time, args=(pictures_dir_2, num))
-            #         self.task_process_2.start()
-            #         local_answer_dt[self.task_process_2.pid] = None
-            #         self.answer_dt[self.task_process_2.pid] = None
-            #         flag_2 = True
+            if not self.task_process_2 or not self.task_process_2.is_alive():
+                if len(temp_times_list) > 0:
+                    num = temp_times_list.pop(0)
+                    pictures_dir_2 = os.path.join(screenshots_dir, str(num))
+                    self.task_process_2 = Process(target=self._cal_time, args=(pictures_dir_2, num))
+                    self.task_process_2.start()
+                    local_answer_dt[self.task_process_2.pid] = None
+                    self.answer_dt[self.task_process_2.pid] = None
+                    flag_2 = True
 
     def _update_cal_status(self, content):
         self.textBrowser.append(content)
@@ -675,8 +675,8 @@ class Ui_MainWindow(QtCore.QObject):
             self.start_screenshot_button.setEnabled(True)
             self.stop_screenshot_button.setEnabled(True)
             self.shared_app_info_queue.put(self.TMP_IMG_DIR)
-            # self.training_button.setEnabled(True)
-            # self.cal_button.setEnabled(True)
+            self.training_button.setEnabled(True)
+            self.cal_button.setEnabled(True)
             self.textBrowser.append("被测的 APP 是：%s, %d" % (self.test_app_name, self.test_app_code))
             self.remind_user = True
             print(self.TEST_APP)
@@ -684,8 +684,8 @@ class Ui_MainWindow(QtCore.QObject):
         else:
             self.start_screenshot_button.setEnabled(False)
             self.stop_screenshot_button.setEnabled(False)
-            # self.cal_button.setEnabled(False)
-            # self.training_button.setEnabled(False)
+            self.cal_button.setEnabled(False)
+            self.training_button.setEnabled(False)
             self.textBrowser.append("请先选择被测的 APP")
 
     def on_update_platform_type_info(self, current_text):
@@ -774,7 +774,7 @@ class Ui_MainWindow(QtCore.QObject):
                 for line in fobj:
                     ls = line.strip().split()
                     self.ios_version_flag = True
-                    return "%s %s" % (self.test_os_type, ls[2])
+                    return "%s %s" % (self.test_os_type, ls[1])
         elif self.test_os_type == "Android":
             version = fobj.read().strip()
             self.ios_version_flag = True

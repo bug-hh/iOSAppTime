@@ -34,7 +34,8 @@ from app_config.config import TOP_TODAY_SORTED_STAGE
 from app_config.config import WEIBO_SORTED_STAGE
 
 class CalTime(object):
-    def __init__(self, main_window, times_counter, test_app_code):
+    def __init__(self, main_window, times_counter, test_app_code, debug=False):
+        self.debug = debug
         self.main_window = main_window
         self.times_counter = times_counter
         self.cache = {}
@@ -42,15 +43,16 @@ class CalTime(object):
 
         self.classifier = Classifier(test_app_code)
 
-        QueueManager.register('get_ui_msg_queue')
-        # QueueManager.register('get_answer_queue')
-        # QueueManager.register('get_task_status')
+        if not self.debug:
+            QueueManager.register('get_ui_msg_queue')
+            # QueueManager.register('get_answer_queue')
+            # QueueManager.register('get_task_status')
 
-        self.manager = QueueManager(address=('localhost', QueueManager.SHARED_PORT), authkey=b'1234')
-        self.manager.connect()
-        self.shared_ui_msg_queue = self.manager.get_ui_msg_queue()
-        # self.shared_answer_queue = self.manager.get_answer_queue()
-        # self.shared_task_status_dt = self.manager.get_task_status()
+            self.manager = QueueManager(address=('localhost', QueueManager.SHARED_PORT), authkey=b'1234')
+            self.manager.connect()
+            self.shared_ui_msg_queue = self.manager.get_ui_msg_queue()
+            # self.shared_answer_queue = self.manager.get_answer_queue()
+            # self.shared_task_status_dt = self.manager.get_task_status()
 
         self.PID = os.getpid()
         self.STAGE_PERCENT = ZHIHU_PERCENT
@@ -136,7 +138,8 @@ class CalTime(object):
                 return -1
 
             msg[JSON_PROGRESS_BAR_KEY] = (self.times_counter, self.progress)
-            self.shared_ui_msg_queue.put(json.dumps(msg))
+            if not self.debug:
+                self.shared_ui_msg_queue.put(json.dumps(msg))
             if self.SORTED_STAGE[mid[0]] <= value:
                 first = mid_index + 1
             else:
@@ -182,7 +185,8 @@ class CalTime(object):
                 return -1
 
             msg[JSON_PROGRESS_BAR_KEY] = (self.times_counter, self.progress)
-            self.shared_ui_msg_queue.put(json.dumps(msg))
+            if not self.debug:
+                self.shared_ui_msg_queue.put(json.dumps(msg))
             if self.SORTED_STAGE[mid[0]] < value:
                 first = mid_index + 1
             else:
@@ -224,6 +228,9 @@ class CalTime(object):
             pic_path = os.path.join(pic_dir, pic_list[pic_index])
             id_ret = self.classifier.identify_pic(pic_path)
 
+        # 先找到「logo 的 uppper bound 后面的 第一张不是 logo 的图」,然后 check_precise, 找到 loading
+        pic_index, id_ret = self._check_precise(pic_index, pic_list, pic_dir, "loading")
+
         return pic_index, id_ret
 
     def _check_precise(self, pic_index, pic_list, pic_dir, target_stage):
@@ -253,7 +260,8 @@ class CalTime(object):
             pic_path = os.path.join(pic_dir, pic_list[pic_index])
             id_ret = self.classifier.identify_pic(pic_path)
             msg[JSON_PROGRESS_BAR_KEY] = (self.times_counter, self.progress)
-            self.shared_ui_msg_queue.put(json.dumps(msg))
+            if not self.debug:
+                self.shared_ui_msg_queue.put(json.dumps(msg))
 
         if target_stage not in ('start', 'loading', 'end'):
             return pic_index, id_ret
@@ -278,7 +286,7 @@ class CalTime(object):
         return pic_index, id_ret
 
     def cal_time(self, pic_dir, exclude_list):
-
+        # EXCLUDED_LIST = ['ad', 'logo', 'words', 'end', 'home']
         self.start_exist = False
         self.loading_exist = False
         self.end_exist = False
@@ -308,6 +316,7 @@ class CalTime(object):
             # 用 logo 的 lower_bound 往回找，找出 start
             if stage == 'start':
                 bound_index = self.lower_bound(pic_dir, pic_list, 0, length, self.SORTED_STAGE['logo'])
+                print(bound_index)
             # 用 logo 的 upper_bound 向前找，找出第一张不是 logo 的截图，作为 loading
             elif stage == 'loading':
                 bound_index = self.upper_bound(pic_dir, pic_list, 0, length, self.SORTED_STAGE['logo'])
@@ -328,7 +337,8 @@ class CalTime(object):
                 print(error_str)
                 msg[JSON_TEXT_BROWSER_KEY] = tuple(error_str)
                 msg[JSON_PID_KEY] = self.PID
-                self.shared_ui_msg_queue.put(json.dumps(msg))
+                if not self.debug:
+                    self.shared_ui_msg_queue.put(json.dumps(msg))
                 ret[stage] = (-1, None, None)
                 # self.shared_answer_queue.put((0, 0))
                 # self.shared_task_status_dt.update({self.PID: True})
@@ -379,16 +389,17 @@ class CalTime(object):
         total_time = "\n文件夹 %d 总共计算耗时: %ds" % (self.times_counter, interval)
         print(total_time)
 
-        max_value = self.main_window.cal_progress_dialog.ui.progress_bar_dt[self.times_counter].maximum()
+        max_value = self.main_window.cal_progress_dialog.ui.progress_bar_dt[self.times_counter].maximum() if not self.debug else 1000
 
         msg[JSON_PROGRESS_BAR_KEY] = (self.times_counter, max_value)
         msg[JSON_TEXT_BROWSER_KEY] = (str2, total_time)
         msg[JSON_PID_KEY] = self.PID
         msg[JSON_ANSWER_KEY] = (launch_time, home_page_loading_time)
-        self.shared_ui_msg_queue.put(json.dumps(msg))
+        if not self.debug:
+            self.shared_ui_msg_queue.put(json.dumps(msg))
 
-        # self.shared_task_status_dt.update({self.PID:True})
-        # self.shared_answer_queue.put((launch_time, home_page_loading_time))
+            # self.shared_task_status_dt.update({self.PID:True})
+            # self.shared_answer_queue.put((launch_time, home_page_loading_time))
 
     def _handle_ad_and_bad(self, bound_index):
         if bound_index >= 0:
@@ -405,14 +416,15 @@ class CalTime(object):
         exception_str = ad_str if ad_str else bad_str
 
         msg = {}
-        max_value = self.main_window.cal_progress_dialog.ui.progress_bar_dt[self.times_counter].maximum()
+        max_value = self.main_window.cal_progress_dialog.ui.progress_bar_dt[self.times_counter].maximum() if not self.debug else 1000
 
         msg[JSON_PROGRESS_BAR_KEY] = (self.times_counter, max_value)
         msg[JSON_TEXT_BROWSER_KEY] = tuple(exception_str)
         msg[JSON_PID_KEY] = self.PID
         msg[JSON_ANSWER_KEY] = (0, 0)
-        self.shared_ui_msg_queue.put(json.dumps(msg))
-        # self.shared_task_status_dt.update({self.PID: True})
+        if not self.debug:
+            self.shared_ui_msg_queue.put(json.dumps(msg))
+            # self.shared_task_status_dt.update({self.PID: True})
         return True
 
     @staticmethod
@@ -421,3 +433,15 @@ class CalTime(object):
         d = datetime.datetime.strptime(fn, "%Y-%m-%d_%H-%M-%S-%f")
         ts = datetime.datetime.timestamp(d)
         return ts
+
+if __name__ == '__main__':
+    screenshots_dir = os.path.join(TMP_IMG_BAIDU_DIR, "iOS")
+    ls_temp = [int(n) for n in os.listdir(screenshots_dir) if not n.startswith(".")]
+    ls_temp.sort()
+    EXCLUDED_LIST = ['ad', 'logo', 'words', 'end', 'home']
+    for num in ls_temp:
+        # 1 知乎 2 微博 3 头条 4 百度
+        ct = CalTime(main_window="", times_counter=num, test_app_code=4, debug=True)
+        pictures_dir_1 = os.path.join(screenshots_dir, str(num))
+        ct.cal_time(pictures_dir_1, EXCLUDED_LIST)
+

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 python3 retrain.py \
-    --image_dir ../training/zhihu/iOS_1-50 \
-    --output_graph ../training/zhihu/model/ios_zhihu_output_graph.pb \
-    --output_labels ../training/zhihu/labels/ios_zhihu_output_labels.txt
+    --image_dir ../training/top_today/iOS_1-50 \
+    --output_graph ../training/zhihu/model/ios_top_today_output_graph.pb \
+    --output_labels ../training/zhihu/labels/ios_top_today_output_labels.txt
 
 #2to3 label_image.py -n -w -o python3_7
 #2to3 retrain.py -n -w -o python3_7

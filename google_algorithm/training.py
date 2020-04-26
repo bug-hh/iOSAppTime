@@ -1373,7 +1373,7 @@ def start_training(image_dir, output_graph, output_labels, test_app):
         '--tfhub_module',
         type=str,
         default=(
-            'https://tfhub.dev/google/imagenet/inception_v3/feature_vector/3'),
+            '/Users/penghaohui/zhihu/QA/iOSAppTime/tfhub_module'),
         help="""\
           Which TensorFlow Hub module to use. For more options,
           search https://tfhub.dev for image feature vector modules.\

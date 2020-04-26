@@ -5,4 +5,4 @@ python3 label_image.py \
     --labels=../training/zhihu/labels/ios_zhihu_output_labels.txt \
     --input_layer=Placeholder \
     --output_layer=final_result \
-    --image=../training/zhihu/test/new-end.jpg
+    --image=../training/zhihu/test/loading.jpg

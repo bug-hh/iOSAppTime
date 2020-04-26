@@ -43,7 +43,7 @@ class Classifier(object):
         elif model_code == 4:
             self.model_dir = "baidu"
             self.model_name = iOS_BAIDU_MODEL_NAME
-            self.labels = ['bad', 'end', 'loading', 'logo', 'start']
+            self.labels = ['ad', 'bad', 'end', 'loading', 'logo', 'start']
 
         model_file = os.path.join(ABOUT_TRAINING, self.model_dir, 'model', self.model_name)
         self.graph = load_graph(model_file)

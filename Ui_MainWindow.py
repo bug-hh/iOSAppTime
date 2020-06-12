@@ -376,8 +376,8 @@ class Ui_MainWindow(QtCore.QObject):
             aver_home_page_loading_time /= 1000
 
             msg = {}
-            # str_aver = "平均启动时长：%.3f" % (aver_launch_time)
-            str_aver = "平均启动时长：%.3f  平均加载时长: %.3f" % (aver_launch_time, aver_home_page_loading_time)
+            str_aver = "平均启动时长：%.3f" % (aver_launch_time)
+            # str_aver = "平均启动时长：%.3f  平均加载时长: %.3f" % (aver_launch_time, aver_home_page_loading_time)
             self._update_info(str_aver, os.getpid())
             print(str_aver)
             # msg[JSON_PROGRESS_DIALOG_CLOSE] = True

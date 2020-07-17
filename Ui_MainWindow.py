@@ -121,6 +121,11 @@ class Ui_MainWindow(QtCore.QObject):
         self.training_button.setObjectName("training_button")
         self.verticalLayout.addWidget(self.training_button)
 
+        # 是否允许广告
+        self.is_allow_ad_check_box = QtWidgets.QCheckBox(self.verticalLayoutWidget)
+        self.is_allow_ad_check_box.setObjectName("is_allow_ad_check_box")
+        self.verticalLayout.addWidget(self.is_allow_ad_check_box)
+
         self.textBrowser = QtWidgets.QTextBrowser(self.centralwidget)
         self.textBrowser.setGeometry(QtCore.QRect(10, 10, 601, 471))
         self.textBrowser.setObjectName("textBrowser")
@@ -430,6 +435,7 @@ class Ui_MainWindow(QtCore.QObject):
         self.platform_label_text.setText(_translate("MainWindow", "系统版本："))
         self.platform_type_label_text.setText(_translate("MainWindow", "平台: "))
         self.app_name_label_text.setText(_translate("MainWindow", "被测 APP :"))
+        self.is_allow_ad_check_box.setText(_translate("MainWindow", "是否允许包含广告"))
         # self.menu.setTitle(_translate("MainWindow", "文件"))
         # self.actionAdd_model_file.setText(_translate("MainWindow", "添加模型文件"))
         # self.actionSet_training_pictures.setText(_translate("MainWindow", "设置训练图片"))
@@ -513,7 +519,9 @@ class Ui_MainWindow(QtCore.QObject):
         self.textBrowser.append(content)
 
     def _cal_time(self, pic_dir, times_counter):
-        ct = CalTime(main_window=self, times_counter=times_counter, test_app_code=self.test_app_code)
+        #todo 加一个控件，读取控件的值，决定 allowAD 的值
+        temp_allow_ad = self.is_allow_ad_check_box.isChecked()
+        ct = CalTime(main_window=self, times_counter=times_counter, test_app_code=self.test_app_code, allow_ad=temp_allow_ad)
         return ct.cal_time(pic_dir, EXCLUDED_LIST)
 
     def update_progress_bar(self, progress_bar_id, value):
@@ -635,6 +643,7 @@ class Ui_MainWindow(QtCore.QObject):
         self.test_app_name = ls[0].strip()
         # 1 知乎 2 微博 3 头条 4 百度
         if self.test_app_name == "知乎":
+            self.test_app_code = 1
             self.TEST_APP = "zhihu"
             self.IOS_MODEL_NAME = iOS_ZHIHU_MODEL_NAME
             self.IOS_LABEL_NAME = iOS_ZHIHU_LABEL_NAME
@@ -642,6 +651,7 @@ class Ui_MainWindow(QtCore.QObject):
             self.SORTED_STAGE = ZHIHU_SORTED_STAGE
 
         elif self.test_app_name == "微博":
+            self.test_app_code = 2
             self.TEST_APP = "weibo"
             self.IOS_MODEL_NAME = iOS_WEIBO_MODEL_NAME
             self.IOS_LABEL_NAME = iOS_WEIBO_LABEL_NAME

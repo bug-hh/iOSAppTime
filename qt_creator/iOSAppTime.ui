@@ -59,6 +59,13 @@
        </property>
       </widget>
      </item>
+     <item>
+      <widget class="QCheckBox" name="is_allow_ad_check_box">
+       <property name="text">
+        <string>允许广告</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </widget>
    <widget class="QTextBrowser" name="textBrowser">

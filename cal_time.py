@@ -34,12 +34,13 @@ from app_config.config import TOP_TODAY_SORTED_STAGE
 from app_config.config import WEIBO_SORTED_STAGE
 
 class CalTime(object):
-    def __init__(self, main_window, times_counter, test_app_code, debug=False):
+    def __init__(self, main_window, times_counter, test_app_code, debug=False, allow_ad=False):
         self.debug = debug
         self.main_window = main_window
         self.times_counter = times_counter
         self.cache = {}
         self.progress = 0
+        self.allow_ad = allow_ad
 
         self.classifier = Classifier(test_app_code)
 
@@ -132,10 +133,11 @@ class CalTime(object):
                     else:
                         mid_index += 1
 
-            # 如果有「广告」，则直接丢弃该批截图序列
-            if mid[0] == 'ad':
-                print('ad', pic_path)
-                return -1
+            # 如果不允许有「广告」，则直接丢弃该批截图序列
+            if not self.allow_ad:
+                if mid[0] == 'ad':
+                    print('ad', pic_path)
+                    return -1
 
             msg[JSON_PROGRESS_BAR_KEY] = (self.times_counter, self.progress)
             if not self.debug:
@@ -179,10 +181,11 @@ class CalTime(object):
                     else:
                         mid_index += 1
 
-            # 如果有「广告」或 「坏图」，则直接丢弃该批截图序列
-            if mid[0] == 'ad':
-                print('ad', pic_path)
-                return -1
+            # 如果不允许有「广告」或 「坏图」，则直接丢弃该批截图序列
+            if not self.allow_ad:
+                if mid[0] == 'ad':
+                    print('ad', pic_path)
+                    return -1
 
             msg[JSON_PROGRESS_BAR_KEY] = (self.times_counter, self.progress)
             if not self.debug:
@@ -206,7 +209,10 @@ class CalTime(object):
 
     def _check_logo(self, pic_index, pic_list, pic_dir):
         '''
-		现在「启动时长」 = 「logo 的 uppper bound 后面的 第一张不是 logo 的图」 - start
+        if not self.allow_ad:
+		    「启动时长」 = 「logo 的 uppper bound 后面的 第一张不是 logo 的图」 - start
+		else:
+		    「启动时长」 = 「ad 的 upper bound 后面的 第一张不是 ad 的图」 - start
 		:param pic_index:
 		:param pic_list:
 		:param pic_dir:
@@ -218,18 +224,20 @@ class CalTime(object):
         direction = 1
         length = len(pic_list)
         msg = {}
-        while id_ret[0] == 'logo' and 1 <= pic_index < length - 1:
-            if id_ret[0] == 'ad':
+        status = 'ad' if self.allow_ad else 'logo'
+        while id_ret[0] == status and 1 <= pic_index < length - 1:
+            if id_ret[0] == 'ad' and not self.allow_ad:
                 return -2, None
             y += 1
-            print("_check_logo: y = %d" % y)
+            print("_check_%s: y = %d" % (status, y))
             self.progress += 1
             pic_index += direction
             pic_path = os.path.join(pic_dir, pic_list[pic_index])
             id_ret = self.classifier.identify_pic(pic_path)
 
         # 先找到「logo 的 uppper bound 后面的 第一张不是 logo 的图」,然后 check_precise, 找到 loading
-        pic_index, id_ret = self._check_precise(pic_index, pic_list, pic_dir, "loading")
+        if not self.allow_ad:
+            pic_index, id_ret = self._check_precise(pic_index, pic_list, pic_dir, "loading")
 
         return pic_index, id_ret
 
@@ -318,8 +326,10 @@ class CalTime(object):
                 bound_index = self.lower_bound(pic_dir, pic_list, 0, length, self.SORTED_STAGE['logo'])
                 print(bound_index)
             # 用 logo 的 upper_bound 向前找，找出第一张不是 logo 的截图，作为 loading
+            # 当有 ad 的时候，用 ad 的 upper_bound 向后找，找出第一张不是 ad 的图，作为 loading
             elif stage == 'loading':
-                bound_index = self.upper_bound(pic_dir, pic_list, 0, length, self.SORTED_STAGE['logo'])
+                k = 'logo' if not self.allow_ad else 'ad'
+                bound_index = self.upper_bound(pic_dir, pic_list, 0, length, self.SORTED_STAGE[k])
 
             is_upper_bound = True if stage == 'loading' else False
 
@@ -402,6 +412,9 @@ class CalTime(object):
             # self.shared_answer_queue.put((launch_time, home_page_loading_time))
 
     def _handle_ad_and_bad(self, bound_index):
+        if self.allow_ad:
+            print("允许 ad, 文件夹 %d 的截图中含有广告", self.times_counter)
+            return False
         if bound_index >= 0:
             return False
 
@@ -435,13 +448,22 @@ class CalTime(object):
         return ts
 
 if __name__ == '__main__':
-    screenshots_dir = os.path.join(TMP_IMG_BAIDU_DIR, "iOS")
+    screenshots_dir = os.path.join(TMP_IMG_ZHIHU_DIR, "iOS")
     ls_temp = [int(n) for n in os.listdir(screenshots_dir) if not n.startswith(".")]
     ls_temp.sort()
     EXCLUDED_LIST = ['ad', 'logo', 'words', 'end', 'home']
-    for num in ls_temp:
-        # 1 知乎 2 微博 3 头条 4 百度
-        ct = CalTime(main_window="", times_counter=num, test_app_code=4, debug=True)
-        pictures_dir_1 = os.path.join(screenshots_dir, str(num))
-        ct.cal_time(pictures_dir_1, EXCLUDED_LIST)
+    # pic_name = '2020-07-09_15-34-47-496953.jpg'
+    # ct = CalTime(main_window="", times_counter=7, test_app_code=1, debug=True, allow_ad=True)
+    # ret = ct.classifier.identify_pic(os.path.join(screenshots_dir, "7", pic_name))
+    # print(ret)
+    t1 = CalTime.get_create_time("2020-07-15_18-29-13-672262.jpg")
+    t2 = CalTime.get_create_time("2020-07-15_18-29-17-811100.jpg")
+    print(t2 - t1)
+    # for num in ls_temp:
+    #     # 1 知乎 2 微博 3 头条 4 百度
+    #     if num != 7:
+    #         continue
+    #     ct = CalTime(main_window="", times_counter=num, test_app_code=1, debug=True, allow_ad=True)
+    #     pictures_dir_1 = os.path.join(screenshots_dir, str(num))
+    #     ct.cal_time(pictures_dir_1, EXCLUDED_LIST)
 

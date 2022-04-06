@@ -771,20 +771,46 @@ class Ui_MainWindow(QtCore.QObject):
                 return status in ["(ESTABLISHED)", "(LISTEN)"], pid
         return False, -1
 
+    @staticmethod
+    def query_xcode_version() -> int:
+        cmd = "xcodebuild -version"
+        fobj = os.popen(cmd)
+        for line in fobj:
+            line = line.strip()
+            return int(float(line.split()[1]))
+        return -1
+
     def query_ios_version(self):
         android_cmd = "adb shell getprop ro.build.version.release"
-        ios_cmd = "instruments -s devices | grep -v -i simulator | grep -i null"
+        xcode_version = Ui_MainWindow.query_xcode_version()
+        print("xcode version", xcode_version)
+        if xcode_version == -1:
+            return "请先安装 xcode"
+        elif xcode_version < 13:
+            ios_cmd = "instruments -s devices | grep -v -i simulator | grep -i null"
+        else:
+            ios_cmd = "xcrun xctrace list devices | grep -v -i simulator | grep -i null"
         cmd = ios_cmd if self.test_os_type == "iOS" else android_cmd
         fobj = os.popen(cmd)
         if self.test_os_type == "iOS":
             query_result = False if len(fobj.read()) == 0 else True
             if not query_result:
-                cmd = "instruments -s devices | grep -v -i simulator | grep -i iphone"
+                if xcode_version < 13:
+                    cmd = "instruments -s devices | grep -v -i simulator | grep -i iphone"
+                else:
+                    cmd = "xcrun xctrace list devices | grep -v -i simulator | grep -i iphone"
                 fobj = os.popen(cmd)
                 for line in fobj:
                     ls = line.strip().split()
                     self.ios_version_flag = True
-                    return "%s %s" % (self.test_os_type, ls[1])
+                    left, right = line.strip().find("("), line.strip().find(")")
+                    if left != -1 and right != -1:
+                        version = line.strip()[left:right+1]
+                    else:
+                        version = "unknown"
+                    msg = {JSON_PID_KEY: os.getpid(), JSON_TEXT_BROWSER_KEY: "查询系统版本成功，当前版本为：iOS %s" % version}
+                    self.shared_ui_msg_queue.put(json.dumps(msg))
+                    return "%s %s" % (self.test_os_type, version)
         elif self.test_os_type == "Android":
             version = fobj.read().strip()
             self.ios_version_flag = True

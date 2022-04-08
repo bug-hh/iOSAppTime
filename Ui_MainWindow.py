@@ -397,7 +397,7 @@ class Ui_MainWindow(QtCore.QObject):
         self.qt_signal.dt_signal[pb_index].emit(pb_index, value)
 
     def _setup_qt_signal(self):
-        screenshots_dir = os.path.join(self.TMP_IMG_DIR, "iOS")
+        screenshots_dir = os.path.join(self.TMP_IMG_DIR, self.test_os_type)
         times_list = [t for t in os.listdir(screenshots_dir) if not t.startswith(".")]
         times_list.sort()
         # counter 表示有多少个计算阶段
@@ -426,7 +426,7 @@ class Ui_MainWindow(QtCore.QObject):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "App 特定场景截图工具"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "App 启动时长测量工具"))
         self.startMinicap.setText(_translate("MainWindow", "启动 mincap"))
         self.start_screenshot_button.setText(_translate("MainWindow", "开始截图"))
         self.stop_screenshot_button.setText(_translate("MainWindow", "结束截图"))
@@ -482,7 +482,7 @@ class Ui_MainWindow(QtCore.QObject):
         self.shared_ui_msg_queue.put(json.dumps(msg))
 
     def _dispatch_cal_task(self):
-        screenshots_dir = os.path.join(self.TMP_IMG_DIR, "iOS")
+        screenshots_dir = os.path.join(self.TMP_IMG_DIR, self.test_os_type)
         times_list = list(self.search_price_dt.keys())
         times_list.sort()
         i = 0
@@ -519,7 +519,7 @@ class Ui_MainWindow(QtCore.QObject):
         self.textBrowser.append(content)
 
     def _cal_time(self, pic_dir, times_counter):
-        #todo 加一个控件，读取控件的值，决定 allowAD 的值
+        # todo 加一个控件，读取控件的值，决定 allowAD 的值
         temp_allow_ad = self.is_allow_ad_check_box.isChecked()
         ct = CalTime(main_window=self, times_counter=times_counter, test_app_code=self.test_app_code, allow_ad=temp_allow_ad)
         return ct.cal_time(pic_dir, EXCLUDED_LIST)
@@ -814,6 +814,8 @@ class Ui_MainWindow(QtCore.QObject):
         elif self.test_os_type == "Android":
             version = fobj.read().strip()
             self.ios_version_flag = True
+            msg = {JSON_PID_KEY: os.getpid(), JSON_TEXT_BROWSER_KEY: "查询系统版本成功，当前版本为：Android %s" % version}
+            self.shared_ui_msg_queue.put(json.dumps(msg))
             return "%s %s" % (self.test_os_type, version)
         else:
             return "请连接且信任 %s 所连接的电脑" % "iPhone" if self.test_os_type == "iOS" else "Android 设备"
@@ -848,5 +850,5 @@ class Ui_MainWindow(QtCore.QObject):
         初始化「操作系统类型选择列表」
         :return:
         '''
-        os_ls = ["None", "iOS"]
+        os_ls = ["None", "iOS", "Android"]
         self.platform_type_comboBox.addItems(os_ls)

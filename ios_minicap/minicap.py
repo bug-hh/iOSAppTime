@@ -234,7 +234,7 @@ class MinicapStream(object):
 
         if code != 0:
             print(self.ip, self.port)
-            print("连接 minicap 套接字失败")
+            print("连接 minicap 套接字失败, code: ", code)
 
     def _disconnect_from_minicap(self):
         self.minicap_socket.shutdown(2)

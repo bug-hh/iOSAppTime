@@ -18,7 +18,6 @@
 <div align="center">
     <img src="pictures/zhihu.jpg" width= "250" height = "400" alt = "zhihu-loading" align=center>
     <img src="pictures/top_today.jpg" width= "250" height = "400" alt = "zhihu-loading" align=center>
-    <img src="pictures/baidu.jpg" width= "250" height = "400" alt = "zhihu-loading" align=center>
     <img src="pictures/sina.jpg" width= "250" height = "400" alt = "zhihu-loading" align=center>
 </div>
 
@@ -26,7 +25,6 @@
 <div align="center" margin-top="10">
     <img src="pictures/zhihu_loading.jpg" width= "250" height = "400" alt = "zhihu-loading" align=center>
     <img src="pictures/top_today_loading.jpg" width= "250" height = "400" alt = "zhihu-loading" align=center>
-    <img src="pictures/baidu_loading.jpg" width= "250" height = "400" alt = "zhihu-loading" align=center>
     <img src="pictures/sina_loading.jpg" width= "250" height = "400" alt = "zhihu-loading" align=center>
 </div>
 

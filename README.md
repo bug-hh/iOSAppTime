@@ -1,5 +1,35 @@
 ## App 启动时长测量工具
 
+## 原理解释
+
+我们将 App 的启动过程分成多个阶段, App 的启动流程可以看做是由多个阶段组成的图片序列
+
+- 点击 App（start 阶段)
+- 出现 logo （logo 阶段）
+- 出现广告 （ad 阶段，可选，可能没有广告）
+- 首页框架开始出现，但没有具体文字 （loading 阶段）
+- 首页加载完成 （end 阶段）
+
+启动时长 = loading - start
+
+上述两个阶段对应截图如下所示
+
+- start 阶段
+<div align="center">
+    <img src="pictures/zhihu.jpg" width= "250" height = "400" alt = "zhihu-loading" align=center>
+    <img src="pictures/top_today.jpg" width= "250" height = "400" alt = "zhihu-loading" align=center>
+    <img src="pictures/baidu.jpg" width= "250" height = "400" alt = "zhihu-loading" align=center>
+    <img src="pictures/sina.jpg" width= "250" height = "400" alt = "zhihu-loading" align=center>
+</div>
+
+- loading 阶段
+<div align="center" margin-top="10">
+    <img src="pictures/zhihu_loading.jpg" width= "250" height = "400" alt = "zhihu-loading" align=center>
+    <img src="pictures/top_today_loading.jpg" width= "250" height = "400" alt = "zhihu-loading" align=center>
+    <img src="pictures/baidu_loading.jpg" width= "250" height = "400" alt = "zhihu-loading" align=center>
+    <img src="pictures/sina_loading.jpg" width= "250" height = "400" alt = "zhihu-loading" align=center>
+</div>
+
 ## 环境配置
 
 - 安装 adb
